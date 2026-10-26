@@ -11,6 +11,7 @@ import {
   User,
   LogOut,
   Shield,
+  Bot,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import alertsService from '../services/alertsService'
@@ -19,6 +20,7 @@ import StaffProfileModal from './StaffProfileModal'
 
 export default function Header({
   onOpenQuickAction,
+  onOpenAiCopilot,
   setMobileOpen,
   selectedRoom,
 }) {
@@ -310,6 +312,18 @@ export default function Header({
             </>
           )}
         </div>
+
+        {/* AI Copilot Trigger */}
+        {onOpenAiCopilot && (
+          <button
+            onClick={onOpenAiCopilot}
+            className="h-9 px-3 rounded-lg bg-[#0B1F3A] hover:bg-[#183153] text-[#FED255] border border-[#FED255]/40 text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer whitespace-nowrap"
+            title="Open SmartStay Staff AI Copilot (Gemini Engine)"
+          >
+            <Bot className="w-3.5 h-3.5" />
+            <span className="hidden md:inline">AI Copilot</span>
+          </button>
+        )}
 
         {/* Quick Action Button */}
         <button

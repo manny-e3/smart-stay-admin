@@ -36,7 +36,11 @@ export default function HousekeepingView() {
             progress: r.status === 'done' ? 100 : r.status === 'in_progress' ? 50 : 10,
             checklist: [
               { item: r.description || 'General Housekeeping Service', done: r.status === 'done' },
+              { item: 'Empty Smart Dustbin & verify seal closure', done: r.status === 'done' },
+              { item: 'Restock luxury Egyptian cotton linens & towels', done: r.status === 'done' },
+              { item: 'Audit & replenish minibar refreshments', done: r.status === 'done' },
             ],
+            dustbinFill: (r.id * 17) % 75 + 15,
           })))
         }
       } catch (e) {

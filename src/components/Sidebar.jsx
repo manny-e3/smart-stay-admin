@@ -18,11 +18,17 @@ import {
   History,
   LogOut,
   X,
+  Sparkles,
+  Utensils,
+  Package,
+  Truck,
+  Receipt,
+  Bot,
 } from 'lucide-react'
 
 import { useAuth } from '../context/AuthContext'
 
-export default function Sidebar({ mobileOpen, setMobileOpen }) {
+export default function Sidebar({ mobileOpen, setMobileOpen, onOpenAiCopilot }) {
   const navigate = useNavigate()
   const location = useLocation()
   const { staff, logout } = useAuth()
@@ -34,8 +40,18 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
         { id: 'dashboard', label: 'Dashboard', icon: LayoutGrid, path: '/dashboard' },
         { id: 'rooms', label: 'Rooms Board', icon: BedDouble, path: '/rooms' },
         { id: 'front-desk', label: 'Front Desk', icon: Compass, path: '/front-desk' },
+        { id: 'housekeeping', label: 'Housekeeping', icon: Sparkles, path: '/housekeeping' },
         { id: 'requests', label: 'Service Requests', icon: CheckSquare, path: '/requests' },
         { id: 'alerts', label: 'Maintenance Alerts', icon: Bell, path: '/alerts' },
+        { id: 'pos', label: 'POS Terminal', icon: Utensils, path: '/pos' },
+      ],
+    },
+    {
+      title: 'INVENTORY & FINANCE',
+      items: [
+        { id: 'inventory', label: 'Stock & Minibar', icon: Package, path: '/inventory' },
+        { id: 'procurement', label: 'Procurement POs', icon: Truck, path: '/procurement' },
+        { id: 'finance', label: 'Folio Billing', icon: Receipt, path: '/finance' },
       ],
     },
     {
@@ -120,6 +136,22 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
             </button>
           )}
         </div>
+
+        {/* AI Copilot Badge Button */}
+        {onOpenAiCopilot && (
+          <div className="px-2 mb-4 shrink-0">
+            <button
+              onClick={onOpenAiCopilot}
+              className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-[#183153] to-[#203D66] border border-[#FED255]/30 flex items-center justify-between text-xs font-bold text-white hover:border-[#FED255] transition-all cursor-pointer shadow-sm group"
+            >
+              <div className="flex items-center gap-2">
+                <Bot className="w-4 h-4 text-[#FED255] group-hover:rotate-12 transition-transform" />
+                <span>AI Staff Copilot</span>
+              </div>
+              <span className="w-2 h-2 rounded-full bg-[#10B981] animate-pulse" />
+            </button>
+          </div>
+        )}
 
         {/* Navigation Sections with Scroll */}
         <div className="overflow-y-auto pr-1 space-y-5 flex-1 min-h-0 custom-scrollbar">

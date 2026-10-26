@@ -73,6 +73,8 @@ export default function RoomDetailPage({
     bath: 50,
   })
 
+  const [localDustbinFill, setLocalDustbinFill] = useState(null)
+
   const triggerToast = (msg) => {
     setToastMessage(msg)
     setTimeout(() => setToastMessage(null), 3500)
@@ -577,6 +579,125 @@ export default function RoomDetailPage({
               </div>
             </div>
           </div>
+
+          {/* Smart Dustbin & Waste Telemetry Card */}
+          {(() => {
+            const dustbinDevice = currentRoom.devices?.find(
+              (d) =>
+                d.name?.toLowerCase().includes('dustbin') ||
+                d.externalId?.includes('bin-waste') ||
+                (d.type === 'sensor' && d.name?.includes('Dustbin'))
+            )
+            const currentDustbinFill = localDustbinFill !== null ? localDustbinFill : (dustbinDevice?.state?.fillLevel ?? 42)
+            const dustbinBattery = dustbinDevice?.state?.battery ?? 94
+            const isDustbinFull = currentDustbinFill >= 85
+
+            return (
+              <div className="bg-white rounded-2xl p-6 border border-[#E5E7EB] shadow-[0_2px_8px_-2px_rgba(11,31,58,0.04)]">
+                <div className="flex items-center justify-between pb-3 border-b border-[#F1F5F9] mb-4">
+                  <div className="flex items-center gap-2.5">
+                    <div className={`p-2 rounded-xl ${isDustbinFull ? 'bg-[#FEE2E2] text-[#DC2626]' : 'bg-[#FEF3C7] text-[#D97706]'}`}>
+                      <Trash2 className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="font-headline font-bold text-base text-[#0B1F3A]">
+                        Smart Dustbin & Waste Telemetry
+                      </h3>
+                      <p className="text-xs text-[#64748B]">
+                        Ultrasonic fill sensor ({dustbinDevice?.externalId || `bin-waste-${roomNumber}`})
+                      </p>
+                    </div>
+                  </div>
+
+                  <span
+                    className={`text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 ${
+                      isDustbinFull
+                        ? 'bg-[#FEE2E2] text-[#DC2626] animate-pulse'
+                        : 'bg-[#ECFDF5] text-[#059669]'
+                    }`}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${isDustbinFull ? 'bg-[#DC2626]' : 'bg-[#10B981]'}`} />
+                    <span>{isDustbinFull ? 'Fill Alert (>=85%)' : 'Optimal Capacity'}</span>
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-6 items-center">
+                  {/* Fill Level Gauge */}
+                  <div className="sm:col-span-5 flex flex-col items-center justify-center p-6 bg-[#F9F9F7] rounded-2xl border border-[#E5E7EB]">
+                    <span className="text-[11px] font-bold text-[#64748B] uppercase tracking-wider mb-1">
+                      Waste Fill Capacity
+                    </span>
+                    <div className={`font-headline font-bold text-4xl tracking-tight ${isDustbinFull ? 'text-[#DC2626]' : 'text-[#0B1F3A]'}`}>
+                      {currentDustbinFill}%
+                    </div>
+                    <div className="w-full bg-[#E5E7EB] h-2.5 rounded-full overflow-hidden mt-3">
+                      <div
+                        className={`h-full transition-all duration-500 ${
+                          isDustbinFull
+                            ? 'bg-[#DC2626]'
+                            : currentDustbinFill >= 50
+                            ? 'bg-[#F59E0B]'
+                            : 'bg-[#10B981]'
+                        }`}
+                        style={{ width: `${Math.min(100, currentDustbinFill)}%` }}
+                      />
+                    </div>
+                    <div className="text-[10px] text-[#64748B] mt-2 font-mono">
+                      Threshold: 85% • Volume: 25L
+                    </div>
+                  </div>
+
+                  {/* Sensor Health Diagnostics & Empty Action */}
+                  <div className="sm:col-span-7 space-y-3">
+                    <div className="p-3.5 rounded-xl bg-[#F9F9F7] border border-[#E5E7EB] flex items-center justify-between">
+                      <span className="text-xs font-bold text-[#0B1F3A]">IoT Battery Level:</span>
+                      <span className="text-xs font-bold text-[#059669]">{dustbinBattery}% (Healthy)</span>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl bg-[#F9F9F7] border border-[#E5E7EB] flex items-center justify-between">
+                      <span className="text-xs font-bold text-[#0B1F3A]">Bin Lid Seal:</span>
+                      <span className="text-xs font-semibold text-[#0B1F3A]">Closed & Odor Sealed</span>
+                    </div>
+
+                    <div className="pt-2 flex items-center gap-3">
+                      <button
+                        onClick={() => {
+                          setLocalDustbinFill(0)
+                          triggerToast(`Room ${roomNumber} Smart Dustbin marked emptied. Sensor reset to 0%.`)
+                        }}
+                        className="btn-secondary text-xs flex-1 flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        <span>Mark Bin Emptied</span>
+                      </button>
+
+                      {isDustbinFull && (
+                        <button
+                          onClick={async () => {
+                            try {
+                              await requestsService.createRequest({
+                                roomId: currentRoom.id,
+                                category: 'housekeeping',
+                                description: `Automated: Suite ${roomNumber} Smart Dustbin reached ${currentDustbinFill}% capacity. Please empty.`,
+                                priority: 'urgent',
+                              })
+                              triggerToast(`Housekeeping porter dispatched for Room ${roomNumber}!`)
+                            } catch (e) {
+                              triggerToast('Porter dispatch error')
+                            }
+                          }}
+                          className="btn-primary text-xs flex-1 flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <Sparkles className="w-3.5 h-3.5" />
+                          <span>Dispatch Porter</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
 
           {/* Architectural Lighting Scenes */}
           <div className="bg-white rounded-2xl p-6 border border-[#E5E7EB] shadow-[0_2px_8px_-2px_rgba(11,31,58,0.04)]">

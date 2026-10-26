@@ -24,6 +24,12 @@ import HotelSettingsView from './components/HotelSettingsView'
 import AuditLogView from './components/AuditLogView'
 import FeedbackView from './components/FeedbackView'
 import DeviceTopologyView from './components/DeviceTopologyView'
+import HousekeepingView from './components/HousekeepingView'
+import PosTerminalView from './components/PosTerminalView'
+import InventoryManagementView from './components/InventoryManagementView'
+import ProcurementView from './components/ProcurementView'
+import FolioBillingView from './components/FolioBillingView'
+import AiStaffCopilotModal from './components/AiStaffCopilotModal'
 import ReservationModal from './components/ReservationModal'
 import ProtectedRoute from './components/ProtectedRoute'
 import { useAuth } from './context/AuthContext'
@@ -45,6 +51,7 @@ export default function App() {
 
   // Modals
   const [isQuickActionModalOpen, setIsQuickActionModalOpen] = useState(false)
+  const [isAiCopilotOpen, setIsAiCopilotOpen] = useState(false)
   const [toastMessage, setToastMessage] = useState(null)
 
   // Remember last visited route in localStorage so refresh stays on page if authenticated
@@ -232,6 +239,7 @@ export default function App() {
                 <Sidebar
                   mobileOpen={mobileOpen}
                   setMobileOpen={setMobileOpen}
+                  onOpenAiCopilot={() => setIsAiCopilotOpen(true)}
                 />
 
                 {/* Main Viewport Container */}
@@ -239,6 +247,7 @@ export default function App() {
                   {/* Persistent Top Header */}
                   <Header
                     onOpenQuickAction={() => setIsQuickActionModalOpen(true)}
+                    onOpenAiCopilot={() => setIsAiCopilotOpen(true)}
                     setMobileOpen={setMobileOpen}
                     selectedRoom={currentRoomObj}
                   />
@@ -297,6 +306,22 @@ export default function App() {
                       <Route path="/front-desk" element={<FrontDeskView />} />
                       <Route path="/stays" element={<Navigate to="/front-desk" replace />} />
 
+                      {/* Housekeeping Turnover & White-glove Inspections */}
+                      <Route path="/housekeeping" element={<HousekeepingView />} />
+
+                      {/* POS F&B & Retail Terminal */}
+                      <Route path="/pos" element={<PosTerminalView />} />
+
+                      {/* Physical Stock & Minibar Inventory */}
+                      <Route path="/inventory" element={<InventoryManagementView />} />
+
+                      {/* Procurement POs & Vendor Receiving */}
+                      <Route path="/procurement" element={<ProcurementView />} />
+
+                      {/* Folio Billing, Ledger & Checkouts */}
+                      <Route path="/finance" element={<FolioBillingView />} />
+                      <Route path="/folios" element={<Navigate to="/finance" replace />} />
+
                       {/* Guest Relations & CRM Screen */}
                       <Route path="/guests" element={<GuestsView />} />
 
@@ -352,6 +377,12 @@ export default function App() {
         isOpen={isQuickActionModalOpen}
         onClose={() => setIsQuickActionModalOpen(false)}
         onConfirm={handleConfirmReservation}
+      />
+
+      {/* Staff AI Copilot Modal */}
+      <AiStaffCopilotModal
+        isOpen={isAiCopilotOpen}
+        onClose={() => setIsAiCopilotOpen(false)}
       />
     </div>
   )
