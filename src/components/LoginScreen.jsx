@@ -112,7 +112,7 @@ export default function LoginScreen({ onLogin }) {
         </div>
 
         {/* Demo Role Selector Pills */}
-        <div className="mb-6 p-2 rounded-xl bg-[#F4F4F2] border border-[#E5E7EB]">
+        {/* <div className="mb-6 p-2 rounded-xl bg-[#F4F4F2] border border-[#E5E7EB]">
           <div className="text-[10px] font-bold uppercase tracking-wider text-[#7587A7] mb-2 px-1 flex items-center justify-between">
             <span>Demo Seeding Roles (Release 1 & 2):</span>
             <span className="text-emerald-700 font-semibold flex items-center gap-1">
@@ -147,7 +147,7 @@ export default function LoginScreen({ onLogin }) {
               )
             })}
           </div>
-        </div>
+        </div> */}
 
         {/* Error notification banner */}
         {errorMessage && (
@@ -182,13 +182,13 @@ export default function LoginScreen({ onLogin }) {
               <label className="text-xs font-semibold text-[#0B1F3A]">
                 Password
               </label>
-              <button
+              {/* <button
                 type="button"
                 onClick={() => alert('Default passwords:\n• Admin: ChangeMe123!\n• Staff: Password123!')}
                 className="text-xs font-medium text-[#64748B] hover:text-[#0B1F3A] transition-colors"
               >
                 View demo passwords
-              </button>
+              </button> */}
             </div>
             <div className="relative">
               <input
@@ -252,7 +252,7 @@ export default function LoginScreen({ onLogin }) {
         </form>
 
         {/* 1-Click Fast Login Shortcut */}
-        <div className="mt-5 pt-4 border-t border-[#F1F5F9] text-center">
+        {/* <div className="mt-5 pt-4 border-t border-[#F1F5F9] text-center">
           <button
             type="button"
             onClick={() => handleQuickDemoLogin(activeDemoRole)}
@@ -261,7 +261,7 @@ export default function LoginScreen({ onLogin }) {
           >
             ⚡ Quick 1-Click Enter Console as {DEMO_CREDENTIALS[activeDemoRole]?.label}
           </button>
-        </div>
+        </div> */}
       </div>
 
       {/* Footer */}
