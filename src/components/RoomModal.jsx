@@ -13,6 +13,17 @@ import {
   Trash2,
   Star,
   ExternalLink,
+  DollarSign,
+  Lock,
+  Snowflake,
+  Lightbulb,
+  Tv,
+  Zap,
+  Volume2,
+  Cpu,
+  Sliders,
+  Radio,
+  Phone,
 } from 'lucide-react'
 import roomsService from '../services/roomsService'
 
@@ -25,6 +36,16 @@ const STANDARD_ROOM_TYPES = [
   'Oceanfront Suite',
   'Heritage Suite',
 ]
+
+const DEFAULT_PRICES = {
+  'Standard King': 180,
+  'Deluxe Suite': 280,
+  'Executive Penthouse': 550,
+  'Presidential Suite': 1200,
+  'Garden Villa': 750,
+  'Oceanfront Suite': 620,
+  'Heritage Suite': 450,
+}
 
 const LUXURY_PRESETS = [
   {
@@ -53,6 +74,77 @@ const LUXURY_PRESETS = [
   },
 ]
 
+const DEVICE_TYPE_OPTIONS = [
+  { value: 'lock', label: 'Door Lock', icon: Lock },
+  { value: 'thermostat', label: 'Climate / HVAC', icon: Snowflake },
+  { value: 'light', label: 'Lighting Zone', icon: Lightbulb },
+  { value: 'curtain', label: 'Curtain / Drapes', icon: Sliders },
+  { value: 'tv', label: 'Smart TV', icon: Tv },
+  { value: 'speaker', label: 'Audio / Speaker', icon: Volume2 },
+  { value: 'sensor', label: 'Sensor / Dustbin', icon: Radio },
+  { value: 'meter', label: 'Power Meter', icon: Zap },
+  { value: 'phone', label: 'VoIP Phone', icon: Phone },
+  { value: 'other', label: 'Custom IoT', icon: Cpu },
+]
+
+const DEVICE_PRESETS = {
+  Standard: [
+    { name: 'Smart Keyless Door Lock', type: 'lock', isActive: true },
+    { name: 'Master Suite Lighting', type: 'light', isActive: true },
+    { name: 'Precision Climate AC', type: 'thermostat', isActive: true },
+    { name: 'Smart Dustbin Telemetry', type: 'sensor', isActive: true },
+  ],
+  Deluxe: [
+    { name: 'Smart Keyless Door Lock', type: 'lock', isActive: true },
+    { name: 'Master Suite Lighting', type: 'light', isActive: true },
+    { name: 'Bedside Reading Dimmer', type: 'light', isActive: true },
+    { name: 'Precision Climate AC', type: 'thermostat', isActive: true },
+    { name: 'Smart 4K Hospitality TV', type: 'tv', isActive: true },
+    { name: 'Smart Dustbin Telemetry', type: 'sensor', isActive: true },
+  ],
+  Penthouse: [
+    { name: 'Smart Keyless Door Lock', type: 'lock', isActive: true },
+    { name: 'Master Suite Lighting', type: 'light', isActive: true },
+    { name: 'Bedside Reading Dimmer', type: 'light', isActive: true },
+    { name: 'Architectural Terrace Lights', type: 'light', isActive: true },
+    { name: 'Precision Dual-Zone AC', type: 'thermostat', isActive: true },
+    { name: 'Smart 4K Hospitality TV', type: 'tv', isActive: true },
+    { name: 'Motorized Drapery Curtains', type: 'curtain', isActive: true },
+    { name: 'High-Fidelity Soundbar', type: 'speaker', isActive: true },
+    { name: 'Smart Dustbin Telemetry', type: 'sensor', isActive: true },
+    { name: 'Real-time Power Meter', type: 'meter', isActive: true },
+  ],
+  Minimal: [
+    { name: 'Smart Keyless Door Lock', type: 'lock', isActive: true },
+    { name: 'Master Suite Lighting', type: 'light', isActive: true },
+  ],
+}
+
+function getDeviceIcon(type) {
+  switch (type) {
+    case 'lock':
+      return Lock
+    case 'thermostat':
+      return Snowflake
+    case 'light':
+      return Lightbulb
+    case 'curtain':
+      return Sliders
+    case 'tv':
+      return Tv
+    case 'speaker':
+      return Volume2
+    case 'sensor':
+      return Radio
+    case 'meter':
+      return Zap
+    case 'phone':
+      return Phone
+    default:
+      return Cpu
+  }
+}
+
 export default function RoomModal({
   isOpen,
   onClose,
@@ -65,6 +157,7 @@ export default function RoomModal({
   const [number, setNumber] = useState('')
   const [floor, setFloor] = useState('1')
   const [roomType, setRoomType] = useState('Deluxe Suite')
+  const [basePrice, setBasePrice] = useState('')
   const [customRoomType, setCustomRoomType] = useState('')
   const [isCustomType, setIsCustomType] = useState(false)
   const [isActive, setIsActive] = useState(true)
@@ -74,6 +167,12 @@ export default function RoomModal({
   const [images, setImages] = useState([])
   const [imageUrlInput, setImageUrlInput] = useState('')
   const [uploading, setUploading] = useState(false)
+
+  // Connected Hardware Devices state for this specific room
+  const [roomDevices, setRoomDevices] = useState([])
+  const [newDeviceName, setNewDeviceName] = useState('')
+  const [newDeviceType, setNewDeviceType] = useState('light')
+  const [isAddingDevice, setIsAddingDevice] = useState(false)
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -109,6 +208,10 @@ export default function RoomModal({
       setIsActive(room.isActive !== false)
       setDnd(Boolean(room.dnd))
 
+      // Price population (handles basePrice, price, base_price)
+      const p = room.basePrice ?? room.price ?? room.base_price
+      setBasePrice(p !== undefined && p !== null ? String(p) : '')
+
       // Images
       let loadedImgs = []
       if (Array.isArray(room.images) && room.images.length > 0) {
@@ -123,6 +226,43 @@ export default function RoomModal({
         loadedImgs = [room.imageUrl || room.image]
       }
       setImages(loadedImgs)
+
+      // Devices population
+      if (Array.isArray(room.devices) && room.devices.length > 0) {
+        setRoomDevices(
+          room.devices.map((d) => ({
+            id: d.id,
+            name: d.name || d.type,
+            type: d.type || 'other',
+            externalId: d.externalId || '',
+            isActive: d.isActive !== false && d.is_active !== false,
+            online: d.online !== false,
+          }))
+        )
+      } else {
+        // Fallback: fetch room devices if not embedded
+        roomsService
+          .getRoomDevices(room.id)
+          .then((devs) => {
+            if (Array.isArray(devs) && devs.length > 0) {
+              setRoomDevices(
+                devs.map((d) => ({
+                  id: d.id,
+                  name: d.name || d.type,
+                  type: d.type || 'other',
+                  externalId: d.externalId || '',
+                  isActive: d.isActive !== false && d.is_active !== false,
+                  online: d.online !== false,
+                }))
+              )
+            } else {
+              setRoomDevices(DEVICE_PRESETS.Deluxe)
+            }
+          })
+          .catch(() => {
+            setRoomDevices(DEVICE_PRESETS.Deluxe)
+          })
+      }
     } else {
       // Default creation values
       setNumber('')
@@ -132,9 +272,14 @@ export default function RoomModal({
       setCustomRoomType('')
       setIsActive(true)
       setDnd(false)
+      setBasePrice(String(DEFAULT_PRICES['Deluxe Suite'] || 280))
       setImages([])
+      setRoomDevices(DEVICE_PRESETS.Deluxe)
     }
     setImageUrlInput('')
+    setIsAddingDevice(false)
+    setNewDeviceName('')
+    setNewDeviceType('light')
     setError(null)
   }, [room, isOpen])
 
@@ -147,7 +292,51 @@ export default function RoomModal({
     } else {
       setIsCustomType(false)
       setRoomType(val)
+      // If basePrice is currently empty or matches a known default, update with tier suggestion
+      if (!basePrice || Object.values(DEFAULT_PRICES).map(String).includes(basePrice)) {
+        if (DEFAULT_PRICES[val]) {
+          setBasePrice(String(DEFAULT_PRICES[val]))
+        }
+      }
     }
+  }
+
+  // Device management helpers
+  const handleToggleDeviceActive = (index) => {
+    setRoomDevices((prev) =>
+      prev.map((dev, i) => (i === index ? { ...dev, isActive: !dev.isActive } : dev))
+    )
+  }
+
+  const handleRemoveDevice = (index) => {
+    setRoomDevices((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  const handleApplyPreset = (presetKey) => {
+    const preset = DEVICE_PRESETS[presetKey]
+    if (preset) {
+      setRoomDevices(preset.map((d) => ({ ...d })))
+    }
+  }
+
+  const handleAddCustomDevice = (e) => {
+    e.preventDefault()
+    const trimmed = newDeviceName.trim()
+    if (!trimmed) {
+      setError('Please provide a name for the hardware device')
+      return
+    }
+    setError(null)
+    setRoomDevices((prev) => [
+      ...prev,
+      {
+        name: trimmed,
+        type: newDeviceType,
+        isActive: true,
+      },
+    ])
+    setNewDeviceName('')
+    setIsAddingDevice(false)
   }
 
   // Handle local file upload
@@ -193,7 +382,11 @@ export default function RoomModal({
     e.preventDefault()
     const trimmed = imageUrlInput.trim()
     if (!trimmed) return
-    if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://') && !trimmed.startsWith('/')) {
+    if (
+      !trimmed.startsWith('http://') &&
+      !trimmed.startsWith('https://') &&
+      !trimmed.startsWith('/')
+    ) {
       setError('Image URL must start with http:// or https://')
       return
     }
@@ -240,15 +433,26 @@ export default function RoomModal({
       return
     }
 
+    let parsedPrice = undefined
+    if (basePrice !== '' && basePrice !== null) {
+      parsedPrice = parseFloat(basePrice)
+      if (isNaN(parsedPrice) || parsedPrice < 0) {
+        setError('Nightly price must be a valid positive number')
+        return
+      }
+    }
+
     const resolvedType = isCustomType ? customRoomType.trim() : roomType
 
     const payload = {
       number: trimmedNumber,
       floor: floorNum,
       roomType: resolvedType || undefined,
+      basePrice: parsedPrice !== undefined ? parsedPrice : null,
       isActive,
       imageUrl: images[0] || null,
       images,
+      devices: roomDevices,
     }
 
     if (isEdit) {
@@ -284,8 +488,8 @@ export default function RoomModal({
               </h2>
               <p className="text-xs text-white/70">
                 {isEdit
-                  ? 'Update unit specifications, photo gallery, and availability'
-                  : 'Register a luxury unit with room photos into inventory'}
+                  ? 'Update unit specifications, pricing, hardware devices, and photos'
+                  : 'Register a luxury unit with nightly rates and smart devices into inventory'}
               </p>
             </div>
           </div>
@@ -299,7 +503,7 @@ export default function RoomModal({
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-5 max-h-[80vh] overflow-y-auto">
+        <form onSubmit={handleSubmit} className="p-6 space-y-5 max-h-[82vh] overflow-y-auto">
           {error && (
             <div className="p-3 rounded-xl bg-[#FEE2E2] border border-[#FECACA] text-[#DC2626] text-xs font-semibold flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
@@ -307,7 +511,7 @@ export default function RoomModal({
             </div>
           )}
 
-          {/* Room Number & Floor Grid */}
+          {/* Row 1: Suite Number & Floor */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-bold text-[#0B1F3A] uppercase tracking-wider mb-1.5">
@@ -341,32 +545,211 @@ export default function RoomModal({
             </div>
           </div>
 
-          {/* Room Type */}
-          <div>
-            <label className="block text-xs font-bold text-[#0B1F3A] uppercase tracking-wider mb-1.5">
-              Room Type / Suite Tier
-            </label>
-            <select
-              value={isCustomType ? 'Custom' : roomType}
-              onChange={(e) => handleTypeSelect(e.target.value)}
-              className="hotel-input w-full text-sm font-medium mb-2 cursor-pointer"
-            >
-              {STANDARD_ROOM_TYPES.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-              <option value="Custom">+ Custom Room Type...</option>
-            </select>
+          {/* Row 2: Room Type & Nightly Price ($ USD) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Room Type */}
+            <div>
+              <label className="block text-xs font-bold text-[#0B1F3A] uppercase tracking-wider mb-1.5">
+                Room Type / Suite Tier
+              </label>
+              <select
+                value={isCustomType ? 'Custom' : roomType}
+                onChange={(e) => handleTypeSelect(e.target.value)}
+                className="hotel-input w-full text-sm font-medium mb-2 cursor-pointer"
+              >
+                {STANDARD_ROOM_TYPES.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+                <option value="Custom">+ Custom Room Type...</option>
+              </select>
 
-            {isCustomType && (
-              <input
-                type="text"
-                value={customRoomType}
-                onChange={(e) => setCustomRoomType(e.target.value)}
-                placeholder="Enter custom suite type name..."
-                className="hotel-input w-full text-sm font-medium animate-fade-in"
-              />
+              {isCustomType && (
+                <input
+                  type="text"
+                  value={customRoomType}
+                  onChange={(e) => setCustomRoomType(e.target.value)}
+                  placeholder="Enter custom suite type name..."
+                  className="hotel-input w-full text-sm font-medium animate-fade-in"
+                />
+              )}
+            </div>
+
+            {/* Nightly Base Price */}
+            <div>
+              <label className="block text-xs font-bold text-[#0B1F3A] uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                <span>Nightly Price ($ USD) *</span>
+                {DEFAULT_PRICES[roomType] && !isCustomType && (
+                  <span className="text-[10px] text-[#C9A227] font-semibold lowercase">
+                    (rec. ${DEFAULT_PRICES[roomType]}/night)
+                  </span>
+                )}
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#64748B]">
+                  <DollarSign className="w-4 h-4 text-[#C9A227]" />
+                </div>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  required
+                  value={basePrice}
+                  onChange={(e) => setBasePrice(e.target.value)}
+                  placeholder={DEFAULT_PRICES[roomType] ? String(DEFAULT_PRICES[roomType]) : '250.00'}
+                  className="hotel-input w-full text-sm font-bold pl-8 text-[#0B1F3A]"
+                />
+              </div>
+              <p className="text-[10px] text-[#64748B] mt-1">
+                Base nightly rate charged during mobile guest booking & PMS reservation.
+              </p>
+            </div>
+          </div>
+
+          {/* CONNECTED HARDWARE DEVICES MANAGEMENT */}
+          <div className="p-4 rounded-xl bg-[#F9F9F7] border border-[#E5E7EB] space-y-3.5">
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="text-xs font-bold text-[#0B1F3A] uppercase tracking-wider flex items-center gap-1.5">
+                  <Cpu className="w-3.5 h-3.5 text-[#C9A227]" />
+                  <span>Connected Hardware Devices ({roomDevices.length})</span>
+                </label>
+                <p className="text-[11px] text-[#64748B]">
+                  Configure IoT devices linked to this specific room (smart locks, HVAC, lighting, TVs, sensors).
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsAddingDevice(!isAddingDevice)}
+                className="px-2.5 py-1 rounded-lg bg-[#0B1F3A] hover:bg-[#16335C] text-white text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+              >
+                <Plus className="w-3 h-3 text-[#C9A227]" />
+                <span>{isAddingDevice ? 'Close' : 'Add Device'}</span>
+              </button>
+            </div>
+
+            {/* Quick Hardware Presets */}
+            <div className="flex flex-wrap items-center gap-1.5 pt-1">
+              <span className="text-[10px] font-bold text-[#7587A7] uppercase tracking-wider mr-1">
+                Presets:
+              </span>
+              {Object.keys(DEVICE_PRESETS).map((presetKey) => (
+                <button
+                  key={presetKey}
+                  type="button"
+                  onClick={() => handleApplyPreset(presetKey)}
+                  className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-white hover:bg-[#F4F4F2] border border-[#E5E7EB] text-[#0B1F3A] transition-colors cursor-pointer"
+                  title={`Apply ${presetKey} bundle (${DEVICE_PRESETS[presetKey].length} devices)`}
+                >
+                  {presetKey} ({DEVICE_PRESETS[presetKey].length})
+                </button>
+              ))}
+            </div>
+
+            {/* Inline Add Device Form */}
+            {isAddingDevice && (
+              <div className="p-3 bg-white rounded-xl border border-[#CBD5E1] shadow-2xs space-y-2.5 animate-fade-in">
+                <span className="text-xs font-bold text-[#0B1F3A] block">
+                  Add New Device to this Suite
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
+                  <div className="sm:col-span-4">
+                    <select
+                      value={newDeviceType}
+                      onChange={(e) => setNewDeviceType(e.target.value)}
+                      className="hotel-input w-full text-xs font-semibold py-1.5 cursor-pointer"
+                    >
+                      {DEVICE_TYPE_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="sm:col-span-6">
+                    <input
+                      type="text"
+                      value={newDeviceName}
+                      onChange={(e) => setNewDeviceName(e.target.value)}
+                      placeholder="e.g. Master Suite Lock, Soundbar, Balcony Lights"
+                      className="hotel-input w-full text-xs py-1.5"
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <button
+                      type="button"
+                      onClick={handleAddCustomDevice}
+                      className="w-full h-8 rounded-lg bg-[#C9A227] hover:bg-[#B58F1F] text-white text-xs font-bold flex items-center justify-center transition-colors cursor-pointer"
+                    >
+                      Add
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Connected Devices List */}
+            {roomDevices.length > 0 ? (
+              <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                {roomDevices.map((dev, idx) => {
+                  const IconComponent = getDeviceIcon(dev.type)
+                  const isInstalled = dev.isActive !== false
+
+                  return (
+                    <div
+                      key={`${dev.id || dev.name}-${idx}`}
+                      className="p-2.5 rounded-lg bg-white border border-[#E5E7EB] flex items-center justify-between text-xs transition-all hover:border-[#CBD5E1]"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-7 h-7 rounded-lg bg-[#F9F9F7] border border-[#E5E7EB] flex items-center justify-center shrink-0">
+                          <IconComponent className="w-3.5 h-3.5 text-[#0B1F3A]" />
+                        </div>
+                        <div className="truncate">
+                          <span className="font-bold text-[#0B1F3A] block truncate">
+                            {dev.name}
+                          </span>
+                          <span className="text-[10px] text-[#64748B] uppercase tracking-wider">
+                            Type: {dev.type}
+                            {dev.externalId ? ` • ID: ${dev.externalId}` : ''}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        {/* Active toggle */}
+                        <button
+                          type="button"
+                          onClick={() => handleToggleDeviceActive(idx)}
+                          className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase transition-colors cursor-pointer ${
+                            isInstalled
+                              ? 'bg-[#DCFCE7] text-[#15803D]'
+                              : 'bg-gray-100 text-gray-500 line-through'
+                          }`}
+                          title={isInstalled ? 'Device enabled for room' : 'Device disabled'}
+                        >
+                          {isInstalled ? 'Enabled' : 'Disabled'}
+                        </button>
+
+                        {/* Remove button */}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveDevice(idx)}
+                          className="p-1 rounded-md text-red-500 hover:bg-red-50 transition-colors cursor-pointer"
+                          title="Remove device from this room"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="p-4 rounded-xl border border-dashed border-[#CBD5E1] bg-white/60 text-center text-xs text-[#64748B]">
+                No hardware devices attached to this room yet. Select a preset above or click "+ Add Device".
+              </div>
             )}
           </div>
 
@@ -445,7 +828,8 @@ export default function RoomModal({
                       alt={`Suite photo ${idx + 1}`}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                       onError={(e) => {
-                        e.target.src = 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=300&auto=format&fit=crop&q=80'
+                        e.target.src =
+                          'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=300&auto=format&fit=crop&q=80'
                       }}
                     />
 

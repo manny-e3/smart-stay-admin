@@ -133,6 +133,7 @@ export default function IoTRoomCard({
   const humidityDisplay = room.humidity || (42 + (Number(room.id) % 8))
   const iaqDisplay = room.iaq || '98 (Excel)'
   const energyDisplay = room.energy24h || Number((9.2 + (Number(room.id) % 5) * 1.3).toFixed(1))
+  const priceDisplay = room.basePrice != null ? room.basePrice : (room.price != null ? room.price : (room.base_price != null ? room.base_price : null))
 
   return (
     <div
@@ -161,13 +162,18 @@ export default function IoTRoomCard({
             </div>
 
             <div className="min-w-0">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="font-headline font-bold text-lg text-[#0B1F3A] leading-tight tracking-tight truncate">
                   {roomNumber}
                 </h3>
                 <span className="text-[11px] font-semibold text-[#7587A7] shrink-0">
                   {floorName}
                 </span>
+                {priceDisplay != null && (
+                  <span className="inline-flex items-center text-[10px] font-bold text-[#855B14] bg-[#C9A227]/15 border border-[#C9A227]/30 px-2 py-0.5 rounded-full shrink-0">
+                    ${priceDisplay}/night
+                  </span>
+                )}
               </div>
               <p className="text-xs text-[#64748B] mt-0.5 truncate font-medium">
                 {tierName} • <span className="text-[#0B1F3A]">{guestDisplay}</span>

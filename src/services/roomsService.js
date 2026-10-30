@@ -53,6 +53,42 @@ export const roomsService = {
   async uploadPhoto(dataUrl) {
     return await api.post('/admin/rooms/upload', { dataUrl })
   },
+
+  /**
+   * Fetch devices configured for a specific room
+   * @param {string|number} roomId
+   */
+  async getRoomDevices(roomId) {
+    return await api.get(`/admin/rooms/${roomId}/devices`)
+  },
+
+  /**
+   * Add a connected hardware device to a specific room
+   * @param {string|number} roomId
+   * @param {Object} data { name: string, type: string, externalId?: string, adapterId?: number, online?: boolean }
+   */
+  async addRoomDevice(roomId, data) {
+    return await api.post(`/admin/rooms/${roomId}/devices`, data)
+  },
+
+  /**
+   * Update device settings or state
+   * @param {string|number} roomId
+   * @param {string|number} deviceId
+   * @param {Object} data
+   */
+  async updateRoomDevice(roomId, deviceId, data) {
+    return await api.patch(`/admin/rooms/${roomId}/devices/${deviceId}`, data)
+  },
+
+  /**
+   * Remove a hardware device from a room
+   * @param {string|number} roomId
+   * @param {string|number} deviceId
+   */
+  async deleteRoomDevice(roomId, deviceId) {
+    return await api.delete(`/admin/rooms/${roomId}/devices/${deviceId}`)
+  },
 }
 
 export default roomsService

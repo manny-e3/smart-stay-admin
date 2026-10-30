@@ -31,6 +31,11 @@ import {
   ChevronRight,
   ImageIcon,
   Sliders,
+  DollarSign,
+  Plus,
+  Radio,
+  Volume2,
+  Cpu,
 } from 'lucide-react'
 import RoomModal from './RoomModal'
 import DeleteRoomModal from './DeleteRoomModal'
@@ -52,6 +57,12 @@ export default function RoomDetailPage({
   const [toastMessage, setToastMessage] = useState(null)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+
+  // Direct room device management state
+  const [isAddDeviceOpen, setIsAddDeviceOpen] = useState(false)
+  const [newDeviceType, setNewDeviceType] = useState('light')
+  const [newDeviceName, setNewDeviceName] = useState('')
+  const [addingDeviceLoading, setAddingDeviceLoading] = useState(false)
 
   // Interactive device state
   const [doorLocked, setDoorLocked] = useState(true)
@@ -224,6 +235,60 @@ export default function RoomDetailPage({
     navigate('/rooms')
   }
 
+  // Direct device management handlers
+  const handleDirectAddDevice = async (e) => {
+    e.preventDefault()
+    const trimmed = newDeviceName.trim()
+    if (!trimmed) {
+      triggerToast('Please enter a device label')
+      return
+    }
+    const id = currentRoom.id || roomId
+    try {
+      setAddingDeviceLoading(true)
+      await roomsService.addRoomDevice(id, {
+        name: trimmed,
+        type: newDeviceType,
+        online: true,
+      })
+      triggerToast(`Device "${trimmed}" attached to suite!`)
+      setNewDeviceName('')
+      setIsAddDeviceOpen(false)
+      const refreshed = await roomsService.getRoomDetail(id)
+      if (refreshed) setRoomDetail(refreshed)
+    } catch (err) {
+      triggerToast(err.message || 'Failed to attach device')
+    } finally {
+      setAddingDeviceLoading(false)
+    }
+  }
+
+  const handleDirectDeleteDevice = async (deviceId, deviceName) => {
+    const id = currentRoom.id || roomId
+    try {
+      await roomsService.deleteRoomDevice(id, deviceId)
+      triggerToast(`Device "${deviceName}" unlinked from suite`)
+      const refreshed = await roomsService.getRoomDetail(id)
+      if (refreshed) setRoomDetail(refreshed)
+    } catch (err) {
+      triggerToast(err.message || 'Failed to remove device')
+    }
+  }
+
+  const handleDirectToggleDevice = async (dev) => {
+    const id = currentRoom.id || roomId
+    try {
+      const currentActive = dev.isActive !== false && dev.is_active !== false
+      const newActive = !currentActive
+      await roomsService.updateRoomDevice(id, dev.id, { isActive: newActive })
+      triggerToast(`Device "${dev.name}" ${newActive ? 'activated' : 'muted'}`)
+      const refreshed = await roomsService.getRoomDetail(id)
+      if (refreshed) setRoomDetail(refreshed)
+    } catch (err) {
+      triggerToast(err.message || 'Failed to update device state')
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Toast Notification */}
@@ -254,6 +319,17 @@ export default function RoomDetailPage({
               <span className="text-sm font-semibold text-[#0B1F3A]">
                 {tierName}
               </span>
+              {(currentRoom.basePrice !== undefined && currentRoom.basePrice !== null) ||
+              (currentRoom.price !== undefined && currentRoom.price !== null) ||
+              (currentRoom.base_price !== undefined && currentRoom.base_price !== null) ? (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#C9A227]/15 text-[#0B1F3A] font-bold text-xs border border-[#C9A227]/30">
+                  <DollarSign className="w-3.5 h-3.5 text-[#C9A227]" />
+                  <span>
+                    ${Number(currentRoom.basePrice ?? currentRoom.price ?? currentRoom.base_price).toFixed(0)}
+                  </span>
+                  <span className="text-[10px] text-[#64748B] font-normal">/ night</span>
+                </span>
+              ) : null}
               <span
                 className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
                   isAlert
@@ -758,10 +834,68 @@ export default function RoomDetailPage({
                   Connected Hardware Devices
                 </h3>
                 <p className="text-xs text-[#64748B]">
-                  {currentRoom.devices?.length || 4} units linked to adapter
+                  {currentRoom.devices?.length || 0} units linked to suite
                 </p>
               </div>
+
+              <button
+                type="button"
+                onClick={() => setIsAddDeviceOpen(!isAddDeviceOpen)}
+                className="h-8 px-2.5 rounded-lg bg-[#0B1F3A] hover:bg-[#16335C] text-white text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
+              >
+                <Plus className="w-3.5 h-3.5 text-[#C9A227]" />
+                <span>{isAddDeviceOpen ? 'Cancel' : 'Add Device'}</span>
+              </button>
             </div>
+
+            {/* Direct Inline Add Device Form */}
+            {isAddDeviceOpen && (
+              <form onSubmit={handleDirectAddDevice} className="p-3.5 rounded-xl bg-[#F9F9F7] border border-[#CBD5E1] space-y-2.5 mb-4 animate-fade-in">
+                <span className="text-xs font-bold text-[#0B1F3A] block">
+                  Attach Hardware Device to {roomNumber}
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
+                  <div className="sm:col-span-4">
+                    <select
+                      value={newDeviceType}
+                      onChange={(e) => setNewDeviceType(e.target.value)}
+                      className="hotel-input w-full text-xs font-semibold py-1.5 cursor-pointer"
+                    >
+                      <option value="lock">Door Lock</option>
+                      <option value="thermostat">Climate / HVAC</option>
+                      <option value="light">Lighting Zone</option>
+                      <option value="curtain">Curtain / Drapes</option>
+                      <option value="tv">Smart TV</option>
+                      <option value="speaker">Audio / Speaker</option>
+                      <option value="sensor">Sensor / Dustbin</option>
+                      <option value="meter">Power Meter</option>
+                      <option value="phone">VoIP Phone</option>
+                      <option value="other">Custom IoT</option>
+                    </select>
+                  </div>
+                  <div className="sm:col-span-5">
+                    <input
+                      type="text"
+                      required
+                      value={newDeviceName}
+                      onChange={(e) => setNewDeviceName(e.target.value)}
+                      placeholder="e.g. Balcony Light, Soundbar..."
+                      className="hotel-input w-full text-xs py-1.5"
+                      autoFocus
+                    />
+                  </div>
+                  <div className="sm:col-span-3">
+                    <button
+                      type="submit"
+                      disabled={addingDeviceLoading}
+                      className="w-full h-8 rounded-lg bg-[#0B1F3A] hover:bg-[#16335C] text-white text-xs font-bold flex items-center justify-center transition-colors cursor-pointer disabled:opacity-50"
+                    >
+                      {addingDeviceLoading ? 'Attaching...' : 'Attach Device'}
+                    </button>
+                  </div>
+                </div>
+              </form>
+            )}
 
             {/* List Devices from Backend */}
             <div className="space-y-2.5">
@@ -771,8 +905,8 @@ export default function RoomDetailPage({
                     key={dev.id}
                     className="p-3 rounded-xl bg-[#F9F9F7] border border-[#E5E7EB] flex items-center justify-between"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-white border border-[#E5E7EB] flex items-center justify-center text-[#0B1F3A]">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 rounded-lg bg-white border border-[#E5E7EB] flex items-center justify-center text-[#0B1F3A] shrink-0">
                         {dev.type === 'lock' ? (
                           <Lock className="w-4 h-4 text-[#16A34A]" />
                         ) : dev.type === 'thermostat' ? (
@@ -781,26 +915,59 @@ export default function RoomDetailPage({
                           <Lightbulb className="w-4 h-4 text-[#C9A227]" />
                         ) : dev.type === 'meter' ? (
                           <Zap className="w-4 h-4 text-[#F59E0B]" />
+                        ) : dev.type === 'tv' ? (
+                          <Tv className="w-4 h-4 text-[#7C3AED]" />
+                        ) : dev.type === 'speaker' ? (
+                          <Volume2 className="w-4 h-4 text-[#0284C7]" />
+                        ) : dev.type === 'sensor' ? (
+                          <Radio className="w-4 h-4 text-[#059669]" />
                         ) : (
                           <Sliders className="w-4 h-4 text-[#64748B]" />
                         )}
                       </div>
-                      <div>
-                        <div className="text-xs font-bold text-[#0B1F3A]">{dev.name}</div>
-                        <div className="text-[10px] text-[#64748B]">
-                          ID: {dev.externalId} • {dev.adapter || 'Demo devices'}
+                      <div className="truncate">
+                        <div className="text-xs font-bold text-[#0B1F3A] truncate">{dev.name}</div>
+                        <div className="text-[10px] text-[#64748B] truncate">
+                          ID: {dev.externalId || dev.id} • Type: {dev.type}
                         </div>
                       </div>
                     </div>
-                    <span
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                        dev.online !== false
-                          ? 'bg-[#DCFCE7] text-[#15803D]'
-                          : 'bg-[#FEE2E2] text-[#DC2626]'
-                      }`}
-                    >
-                      {dev.online !== false ? 'ONLINE' : 'OFFLINE'}
-                    </span>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span
+                        className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
+                          dev.online !== false
+                            ? 'bg-[#DCFCE7] text-[#15803D]'
+                            : 'bg-[#FEE2E2] text-[#DC2626]'
+                        }`}
+                      >
+                        {dev.online !== false ? 'ONLINE' : 'OFFLINE'}
+                      </span>
+
+                      {/* Active Toggle */}
+                      <button
+                        type="button"
+                        onClick={() => handleDirectToggleDevice(dev)}
+                        className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase transition-colors cursor-pointer ${
+                          dev.isActive !== false && dev.is_active !== false
+                            ? 'bg-[#DCFCE7] text-[#15803D]'
+                            : 'bg-gray-100 text-gray-500 line-through'
+                        }`}
+                        title={dev.isActive !== false && dev.is_active !== false ? 'Device active' : 'Device disabled'}
+                      >
+                        {dev.isActive !== false && dev.is_active !== false ? 'Active' : 'Muted'}
+                      </button>
+
+                      {/* Delete / Detach Device */}
+                      <button
+                        type="button"
+                        onClick={() => handleDirectDeleteDevice(dev.id, dev.name)}
+                        className="p-1 rounded-md text-red-500 hover:bg-red-50 transition-colors cursor-pointer"
+                        title="Unlink device from suite"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 ))
               ) : (
