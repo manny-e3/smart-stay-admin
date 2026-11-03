@@ -6,7 +6,7 @@
 
 const API_BASE_URL =
   (typeof import.meta !== 'undefined' && import.meta?.env?.VITE_API_URL) ||
-  'https://dev.rekovryltd.com'
+  'http://localhost:5000'
 
 let isRefreshing = false
 let refreshSubscribers = []

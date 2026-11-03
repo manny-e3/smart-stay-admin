@@ -50,6 +50,30 @@ export const deviceService = {
       skipAuth: true,
     })
   },
+
+  /**
+   * Query real-time status of an ESP32 In-Room Hub
+   * @param {string|number} roomNumber
+   */
+  async getEsp32Status(roomNumber) {
+    return await api.get(`/integrations/esp32/rooms/${roomNumber}/status`, null, { skipAuth: true })
+  },
+
+  /**
+   * Ingest ESP32 telemetry packet (BME680, PZEM-004T, Relays, Battery)
+   * @param {Object} payload
+   */
+  async sendEsp32Telemetry(payload) {
+    return await api.post('/integrations/esp32/telemetry', payload, { skipAuth: true })
+  },
+
+  /**
+   * Ingest emergency hardware alert (smoke, high heat, low battery)
+   * @param {Object} payload
+   */
+  async sendEsp32Alert(payload) {
+    return await api.post('/integrations/esp32/alert', payload, { skipAuth: true })
+  },
 }
 
 export default deviceService
