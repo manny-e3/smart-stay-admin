@@ -17,6 +17,7 @@ import {
   Edit3,
   Trash2,
   Eye,
+  Gauge,
 } from 'lucide-react'
 
 export default function IoTRoomCard({
@@ -132,7 +133,10 @@ export default function IoTRoomCard({
   const tempDisplay = room.temp || (21 + (Number(room.id) % 4))
   const humidityDisplay = room.humidity || (42 + (Number(room.id) % 8))
   const iaqDisplay = room.iaq || '98 (Excel)'
+  const pressureDisplay = room.pressure != null ? `${room.pressure} hPa` : '1013 hPa'
   const energyDisplay = room.energy24h || Number((9.2 + (Number(room.id) % 5) * 1.3).toFixed(1))
+  const powerDisplay = room.power != null ? `${room.power}W` : `${Math.round(Number(energyDisplay) * 28.5)}W`
+  const isSmokeActive = Boolean(room.smokeAlert || (room.smokeValue && room.smokeValue > 1800))
   const priceDisplay = room.basePrice != null ? room.basePrice : (room.price != null ? room.price : (room.base_price != null ? room.base_price : null))
 
   return (
@@ -243,8 +247,19 @@ export default function IoTRoomCard({
           </div>
         </div>
 
+        {/* Urgent Smoke Alert Banner */}
+        {isSmokeActive && (
+          <div className="mb-3.5 flex items-center justify-between px-3.5 py-2 rounded-xl bg-[#DC2626] text-white text-xs font-bold animate-pulse shadow-sm">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-white shrink-0" />
+              <span>SMOKE DETECTED! In-room siren active</span>
+            </div>
+            <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded font-mono">MQ-2 HAZARD</span>
+          </div>
+        )}
+
         {/* Operational Highlights Banner if open requests or alerts */}
-        {(room.openRequests > 0 || room.openAlerts > 0) && (
+        {(room.openRequests > 0 || room.openAlerts > 0) && !isSmokeActive && (
           <div className="mb-3.5 flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#FFFBEB] border border-[#FDE68A] text-xs">
             {room.openAlerts > 0 ? (
               <span className="flex items-center gap-1 font-bold text-red-700">
@@ -261,49 +276,64 @@ export default function IoTRoomCard({
           </div>
         )}
 
-        {/* Environmental Sensors Row (Temp, Humidity, IAQ) */}
-        <div className="grid grid-cols-3 gap-2 sm:gap-3 py-3 px-3.5 rounded-xl mb-4 bg-[#F9F9F7] border border-[#E5E7EB]">
+        {/* Environmental Sensors Row (Temp, Humidity, IAQ, Pressure) */}
+        <div className="grid grid-cols-4 gap-1.5 sm:gap-2 py-2.5 px-3 rounded-xl mb-4 bg-[#F9F9F7] border border-[#E5E7EB]">
           {/* Temperature */}
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="text-[#DC2626] p-2 rounded-lg bg-[#FEE2E2] shrink-0">
-              <Thermometer className="w-4 h-4 stroke-[2.2]" />
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="text-[#DC2626] p-1.5 rounded-lg bg-[#FEE2E2] shrink-0">
+              <Thermometer className="w-3.5 h-3.5 stroke-[2.2]" />
             </div>
             <div className="min-w-0">
-              <div className="font-bold text-xs sm:text-sm text-[#0B1F3A] leading-tight truncate">
+              <div className="font-bold text-xs text-[#0B1F3A] leading-tight truncate">
                 {tempDisplay}°C
               </div>
-              <div className="text-[10px] text-[#64748B] mt-0.5 leading-none font-medium truncate">
-                Ambient Temp
+              <div className="text-[9px] text-[#64748B] mt-0.5 leading-none font-medium truncate">
+                Temp
               </div>
             </div>
           </div>
 
           {/* Humidity */}
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="text-[#2563EB] p-2 rounded-lg bg-[#DBEAFE] shrink-0">
-              <Droplets className="w-4 h-4 stroke-[2.2]" />
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="text-[#2563EB] p-1.5 rounded-lg bg-[#DBEAFE] shrink-0">
+              <Droplets className="w-3.5 h-3.5 stroke-[2.2]" />
             </div>
             <div className="min-w-0">
-              <div className="font-bold text-xs sm:text-sm text-[#0B1F3A] leading-tight truncate">
+              <div className="font-bold text-xs text-[#0B1F3A] leading-tight truncate">
                 {humidityDisplay}%
               </div>
-              <div className="text-[10px] text-[#64748B] mt-0.5 leading-none font-medium truncate">
+              <div className="text-[9px] text-[#64748B] mt-0.5 leading-none font-medium truncate">
                 Humidity
               </div>
             </div>
           </div>
 
           {/* Air Quality (IAQ) */}
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="text-[#0D9488] p-2 rounded-lg bg-[#CCFBF1] shrink-0">
-              <Wind className="w-4 h-4 stroke-[2.2]" />
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="text-[#0D9488] p-1.5 rounded-lg bg-[#CCFBF1] shrink-0">
+              <Wind className="w-3.5 h-3.5 stroke-[2.2]" />
             </div>
             <div className="min-w-0">
-              <div className="font-bold text-xs sm:text-sm text-[#0B1F3A] leading-tight truncate">
+              <div className="font-bold text-xs text-[#0B1F3A] leading-tight truncate">
                 {iaqDisplay}
               </div>
-              <div className="text-[10px] text-[#64748B] mt-0.5 leading-none font-medium truncate">
+              <div className="text-[9px] text-[#64748B] mt-0.5 leading-none font-medium truncate">
                 Air Quality
+              </div>
+            </div>
+          </div>
+
+          {/* Atmospheric Pressure */}
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="text-[#7C3AED] p-1.5 rounded-lg bg-[#F3E8FF] shrink-0">
+              <Gauge className="w-3.5 h-3.5 stroke-[2.2]" />
+            </div>
+            <div className="min-w-0">
+              <div className="font-bold text-xs text-[#0B1F3A] leading-tight truncate">
+                {pressureDisplay}
+              </div>
+              <div className="text-[9px] text-[#64748B] mt-0.5 leading-none font-medium truncate">
+                Pressure
               </div>
             </div>
           </div>
@@ -443,11 +473,14 @@ export default function IoTRoomCard({
           <div className="p-1 rounded-md bg-[#FEF7DB] text-[#C9A227]">
             <Zap className="w-3.5 h-3.5" />
           </div>
-          <div className="flex items-baseline gap-1.5">
+          <div className="flex items-baseline gap-1.5 flex-wrap">
             <span className="font-bold text-xs sm:text-sm text-[#0B1F3A]">
               {energyDisplay} kWh
             </span>
-            <span className="text-[11px] text-[#64748B]">24h Energy</span>
+            <span className="text-[11px] text-[#64748B]">24h</span>
+            <span className="text-[10px] font-bold text-[#16A34A] bg-[#DCFCE7] px-1.5 py-0.2 rounded">
+              {powerDisplay}
+            </span>
           </div>
         </div>
 

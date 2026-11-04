@@ -52,6 +52,16 @@ export const deviceService = {
   },
 
   /**
+   * Assign an ESP32 Hub Device ID to a room
+   * @param {string|number} roomNumber
+   * @param {string} deviceId e.g. "SMART_101"
+   * @param {string} ip optional local IP
+   */
+  async assignEsp32Hub(roomNumber, deviceId, ip = null) {
+    return await api.post(`/integrations/esp32/rooms/${roomNumber}/assign-hub`, { deviceId, ip }, { skipAuth: true })
+  },
+
+  /**
    * Query real-time status of an ESP32 In-Room Hub
    * @param {string|number} roomNumber
    */

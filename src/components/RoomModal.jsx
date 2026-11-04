@@ -24,8 +24,11 @@ import {
   Sliders,
   Radio,
   Phone,
+  Wifi,
+  ShieldCheck,
 } from 'lucide-react'
 import roomsService from '../services/roomsService'
+import deviceService from '../services/deviceService'
 
 const STANDARD_ROOM_TYPES = [
   'Standard King',
@@ -169,6 +172,7 @@ export default function RoomModal({
   const [uploading, setUploading] = useState(false)
 
   // Connected Hardware Devices state for this specific room
+  const [hubDeviceId, setHubDeviceId] = useState('')
   const [roomDevices, setRoomDevices] = useState([])
   const [newDeviceName, setNewDeviceName] = useState('')
   const [newDeviceType, setNewDeviceType] = useState('light')
@@ -227,6 +231,26 @@ export default function RoomModal({
       }
       setImages(loadedImgs)
 
+      // Hub Device ID population
+      const rawDevices = Array.isArray(room.devices) ? room.devices : []
+      const foundHub = rawDevices.find(
+        (d) =>
+          d.capabilities?.hubDeviceId ||
+          (d.externalId && (d.externalId.startsWith('SMART_') || d.externalId.includes('light-') || d.externalId.includes('bme680')))
+      )
+      if (room.hubDeviceId) {
+        setHubDeviceId(room.hubDeviceId)
+      } else if (foundHub?.capabilities?.hubDeviceId) {
+        setHubDeviceId(foundHub.capabilities.hubDeviceId)
+      } else if (foundHub?.externalId?.startsWith('SMART_')) {
+        const m = foundHub.externalId.match(/^(SMART_[A-Za-z0-9_-]+)/)
+        setHubDeviceId(m ? m[1] : foundHub.externalId)
+      } else if (room.number) {
+        setHubDeviceId(`SMART_${room.number}`)
+      } else {
+        setHubDeviceId('')
+      }
+
       // Devices population
       if (Array.isArray(room.devices) && room.devices.length > 0) {
         setRoomDevices(
@@ -274,6 +298,7 @@ export default function RoomModal({
       setDnd(false)
       setBasePrice(String(DEFAULT_PRICES['Deluxe Suite'] || 280))
       setImages([])
+      setHubDeviceId('')
       setRoomDevices(DEVICE_PRESETS.Deluxe)
     }
     setImageUrlInput('')
@@ -317,6 +342,23 @@ export default function RoomModal({
     if (preset) {
       setRoomDevices(preset.map((d) => ({ ...d })))
     }
+  }
+
+  const handleApplySmartHub = () => {
+    const effectiveHubId = hubDeviceId.trim() || `SMART_${number.trim() || '101'}`
+    if (!hubDeviceId.trim()) {
+      setHubDeviceId(effectiveHubId)
+    }
+    const esp32Bundle = [
+      { name: 'Suite Light (Relay 1)', type: 'light', externalId: `${effectiveHubId}_light`, isActive: true },
+      { name: 'Air Conditioner (Relay 2)', type: 'thermostat', externalId: `${effectiveHubId}_ac`, isActive: true },
+      { name: 'Smart TV (Relay 3)', type: 'tv', externalId: `${effectiveHubId}_tv`, isActive: true },
+      { name: 'Minibar Fridge (Relay 4)', type: 'other', externalId: `${effectiveHubId}_fridge`, isActive: true },
+      { name: 'AC Power Meter (PZEM-004T)', type: 'meter', externalId: `${effectiveHubId}_pzem`, isActive: true },
+      { name: 'Climate & IAQ Sensor (BME680)', type: 'sensor', externalId: `${effectiveHubId}_bme680`, isActive: true },
+      { name: 'Smoke & Gas Detector (MQ-2)', type: 'sensor', externalId: `${effectiveHubId}_mq2`, isActive: true },
+    ]
+    setRoomDevices(esp32Bundle)
   }
 
   const handleAddCustomDevice = (e) => {
@@ -462,6 +504,14 @@ export default function RoomModal({
     try {
       setLoading(true)
       await onSubmit(payload)
+      const effectiveHubId = hubDeviceId.trim() || `SMART_${trimmedNumber}`
+      if (effectiveHubId && trimmedNumber) {
+        try {
+          await deviceService.assignEsp32Hub(trimmedNumber, effectiveHubId)
+        } catch (hubErr) {
+          console.warn('ESP32 Hub assignment auto-link notice:', hubErr.message)
+        }
+      }
       onClose()
     } catch (err) {
       setError(err.message || 'Failed to save room details')
@@ -521,7 +571,13 @@ export default function RoomModal({
                 type="text"
                 required
                 value={number}
-                onChange={(e) => setNumber(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value
+                  setNumber(val)
+                  if (!hubDeviceId || hubDeviceId === `SMART_${number}`) {
+                    setHubDeviceId(val.trim() ? `SMART_${val.trim()}` : '')
+                  }
+                }}
                 placeholder="e.g. 301, 402B, Villa 1"
                 className="hotel-input w-full text-sm font-semibold"
                 autoFocus
@@ -628,6 +684,49 @@ export default function RoomModal({
                 <Plus className="w-3 h-3 text-[#C9A227]" />
                 <span>{isAddingDevice ? 'Close' : 'Add Device'}</span>
               </button>
+            </div>
+
+            {/* Dedicated ESP32 In-Room Hub Integration */}
+            <div className="p-3.5 bg-gradient-to-r from-[#0B1F3A]/5 via-amber-500/5 to-[#C9A227]/10 rounded-xl border border-[#C9A227]/30 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-[#0B1F3A] text-[#C9A227] flex items-center justify-center text-xs font-bold shadow-xs">
+                    <Wifi className="w-4 h-4 text-[#C9A227]" />
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-[#0B1F3A] flex items-center gap-1.5">
+                      <span>ESP32 Smart Room Hub</span>
+                      <span className="px-1.5 py-0.5 bg-[#DCFCE7] text-[#15803D] text-[9px] rounded-sm font-semibold uppercase tracking-wider">
+                        1 Device ID Bundle
+                      </span>
+                    </span>
+                    <p className="text-[10px] text-[#64748B]">
+                      Assigning this Device ID links 4 Relays (Light, AC, TV, Fridge) & 3 Sensors (BME680, PZEM-004T, MQ-2).
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <div className="relative grow">
+                  <input
+                    type="text"
+                    value={hubDeviceId}
+                    onChange={(e) => setHubDeviceId(e.target.value)}
+                    placeholder={`e.g. SMART_${number.trim() || '101'}`}
+                    className="hotel-input w-full text-xs font-mono py-2 pl-3 bg-white"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleApplySmartHub}
+                  className="h-9 px-3 rounded-lg bg-[#C9A227] hover:bg-[#B58F1F] text-[#0B1F3A] text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 shadow-2xs"
+                  title="Populate actuators (Light, AC, TV, Fridge) and sensors (BME680, PZEM-004T, MQ-2)"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-[#0B1F3A]" />
+                  <span>Auto-Provision Hub Bundle</span>
+                </button>
+              </div>
             </div>
 
             {/* Quick Hardware Presets */}

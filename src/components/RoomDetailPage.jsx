@@ -36,6 +36,9 @@ import {
   Radio,
   Volume2,
   Cpu,
+  Gauge,
+  Flame,
+  Activity,
 } from 'lucide-react'
 import RoomModal from './RoomModal'
 import DeleteRoomModal from './DeleteRoomModal'
@@ -299,6 +302,35 @@ export default function RoomDetailPage({
         </div>
       )}
 
+      {/* Urgent Smoke Alert Banner */}
+      {(currentRoom.smokeAlert || (currentRoom.smokeValue && currentRoom.smokeValue > 1800)) && (
+        <div className="p-4 rounded-2xl bg-red-600 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg animate-pulse border-2 border-red-400">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-white/20 text-white shrink-0">
+              <Flame className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h4 className="font-bold text-sm tracking-wider uppercase flex items-center gap-2">
+                <span>CRITICAL HAZARD: SMOKE / GAS DETECTED</span>
+                <span className="px-2 py-0.5 rounded-full bg-white text-red-700 text-[10px] font-extrabold uppercase">
+                  MQ-2 Triggered
+                </span>
+              </h4>
+              <p className="text-xs text-red-100 mt-0.5">
+                Hazard detection in {roomNumber}. Sensor Reading: {currentRoom.smokeValue || 2150} (Threshold: 1800). Local hardware siren & red LED strobe active.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => triggerToast(`Emergency protocol initiated for ${roomNumber}`)}
+            className="px-4 py-2 rounded-xl bg-white text-red-700 text-xs font-bold hover:bg-red-50 transition-colors cursor-pointer shrink-0 shadow-xs"
+          >
+            Dispatch Emergency Response
+          </button>
+        </div>
+      )}
+
       {/* Top Breadcrumb & Action Bar */}
       <div className="bg-white rounded-2xl p-5 border border-[#E5E7EB] shadow-[0_2px_8px_-2px_rgba(11,31,58,0.04)] flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
@@ -545,7 +577,7 @@ export default function RoomDetailPage({
                   {targetTemp}°C
                 </div>
                 <div className="text-[11px] text-[#64748B] mt-1">
-                  Ambient: 22.4°C
+                  Ambient: {currentRoom.temp !== undefined && currentRoom.temp !== null ? `${Number(currentRoom.temp).toFixed(1)}°C` : '22.4°C'}
                 </div>
 
                 <div className="flex items-center gap-3 mt-4">
@@ -584,7 +616,9 @@ export default function RoomDetailPage({
                       <div className="text-[11px] text-[#64748B]">Optimal comfort zone</div>
                     </div>
                   </div>
-                  <span className="text-sm font-bold text-[#0B1F3A]">46%</span>
+                  <span className="text-sm font-bold text-[#0B1F3A]">
+                    {currentRoom.humidity !== undefined && currentRoom.humidity !== null ? `${Number(currentRoom.humidity).toFixed(0)}%` : '46%'}
+                  </span>
                 </div>
 
                 <div className="p-3.5 rounded-xl bg-[#F9F9F7] border border-[#E5E7EB] flex items-center justify-between">
@@ -594,11 +628,30 @@ export default function RoomDetailPage({
                     </div>
                     <div>
                       <span className="text-xs font-bold text-[#0B1F3A]">Indoor Air Quality</span>
-                      <div className="text-[11px] text-[#64748B]">CO2: 480 ppm (Fresh Alpine Air)</div>
+                      <div className="text-[11px] text-[#64748B]">BME680 VOC / Gas Index</div>
                     </div>
                   </div>
-                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-[#DCFCE7] text-[#15803D]">
-                    EXCELLENT
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                    String(currentRoom.iaq || '').toLowerCase().includes('poor')
+                      ? 'bg-[#FEE2E2] text-[#DC2626]'
+                      : 'bg-[#DCFCE7] text-[#15803D]'
+                  }`}>
+                    {currentRoom.iaq || 'EXCELLENT'}
+                  </span>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-[#F9F9F7] border border-[#E5E7EB] flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-[#FEF3C7] text-[#D97706]">
+                      <Gauge className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-xs font-bold text-[#0B1F3A]">Barometric Pressure</span>
+                      <div className="text-[11px] text-[#64748B]">BME680 Atmospheric Sensor</div>
+                    </div>
+                  </div>
+                  <span className="text-sm font-bold text-[#0B1F3A]">
+                    {currentRoom.pressure ? `${Number(currentRoom.pressure).toFixed(1)} hPa` : '1013.2 hPa'}
                   </span>
                 </div>
               </div>
@@ -820,6 +873,108 @@ export default function RoomDetailPage({
                 <div className="text-xs font-bold text-[#0B1F3A]">All Off</div>
                 <div className="text-[10px] text-[#64748B]">Power Standby</div>
               </button>
+            </div>
+          </div>
+
+          {/* Energy & Power Management (PZEM-004T & MQ-2 Safety) */}
+          <div className="bg-white rounded-2xl p-6 border border-[#E5E7EB] shadow-[0_2px_8px_-2px_rgba(11,31,58,0.04)]">
+            <div className="flex items-center justify-between pb-3 border-b border-[#F1F5F9] mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-[#FEF3C7] text-[#D97706] flex items-center justify-center">
+                  <Zap className="w-4 h-4 text-[#D97706]" />
+                </div>
+                <div>
+                  <h3 className="font-headline font-bold text-base text-[#0B1F3A]">
+                    Energy & Real-Time Power Telemetry
+                  </h3>
+                  <p className="text-xs text-[#64748B]">
+                    PZEM-004T v3.0 AC Sub-meter & MQ-2 Safety Sentinel
+                  </p>
+                </div>
+              </div>
+
+              <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-[#ECFDF5] text-[#059669] flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
+                <span>PZEM Live</span>
+              </span>
+            </div>
+
+            {/* 4-Metric Grid: Watts, kWh, Voltage, Current */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+              <div className="p-3.5 rounded-xl bg-[#F9F9F7] border border-[#E5E7EB]">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider">
+                    Active Power
+                  </span>
+                  <Zap className="w-3.5 h-3.5 text-[#F59E0B]" />
+                </div>
+                <div className="text-base font-bold text-[#0B1F3A]">
+                  {currentRoom.power != null ? `${Number(currentRoom.power).toFixed(1)} W` : '142.5 W'}
+                </div>
+                <div className="text-[10px] text-[#64748B] mt-0.5">Real-time load</div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-[#F9F9F7] border border-[#E5E7EB]">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider">
+                    24h Energy
+                  </span>
+                  <Activity className="w-3.5 h-3.5 text-[#2563EB]" />
+                </div>
+                <div className="text-base font-bold text-[#0B1F3A]">
+                  {currentRoom.energy24h != null ? `${Number(currentRoom.energy24h).toFixed(2)} kWh` : '3.42 kWh'}
+                </div>
+                <div className="text-[10px] text-[#64748B] mt-0.5">Cumulative kWh</div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-[#F9F9F7] border border-[#E5E7EB]">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider">
+                    AC Voltage
+                  </span>
+                  <Cpu className="w-3.5 h-3.5 text-[#7C3AED]" />
+                </div>
+                <div className="text-base font-bold text-[#0B1F3A]">
+                  {currentRoom.voltage != null ? `${Number(currentRoom.voltage).toFixed(1)} V` : '228.4 V'}
+                </div>
+                <div className="text-[10px] text-[#64748B] mt-0.5">Grid potential</div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-[#F9F9F7] border border-[#E5E7EB]">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider">
+                    AC Current
+                  </span>
+                  <Gauge className="w-3.5 h-3.5 text-[#0D9488]" />
+                </div>
+                <div className="text-base font-bold text-[#0B1F3A]">
+                  {currentRoom.current != null ? `${Number(currentRoom.current).toFixed(2)} A` : '0.62 A'}
+                </div>
+                <div className="text-[10px] text-[#64748B] mt-0.5">Phase draw</div>
+              </div>
+            </div>
+
+            {/* MQ-2 Safety Status Bar */}
+            <div className={`p-3 rounded-xl border flex items-center justify-between text-xs ${
+              currentRoom.smokeAlert || (currentRoom.smokeValue && currentRoom.smokeValue > 1800)
+                ? 'bg-[#FEE2E2] border-[#FECACA] text-[#DC2626] font-bold animate-pulse'
+                : 'bg-[#F9F9F7] border-[#E5E7EB] text-[#0B1F3A]'
+            }`}>
+              <div className="flex items-center gap-2">
+                <Flame className={`w-4 h-4 ${
+                  currentRoom.smokeAlert || (currentRoom.smokeValue && currentRoom.smokeValue > 1800)
+                    ? 'text-[#DC2626]'
+                    : 'text-[#059669]'
+                }`} />
+                <span>
+                  {currentRoom.smokeAlert || (currentRoom.smokeValue && currentRoom.smokeValue > 1800)
+                    ? 'MQ-2 SMOKE HAZARD TRIGGERED: Local siren active!'
+                    : 'MQ-2 Smoke & Gas Sentinel: Atmosphere Clear'}
+                </span>
+              </div>
+              <span className="font-mono text-[11px] text-[#64748B]">
+                Level: {currentRoom.smokeValue != null ? `${currentRoom.smokeValue} ADC` : '412 ADC'} (Threshold: 1800)
+              </span>
             </div>
           </div>
         </div>
