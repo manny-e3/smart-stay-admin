@@ -39,6 +39,7 @@ import {
   Gauge,
   Flame,
   Activity,
+  Wifi,
 } from 'lucide-react'
 import RoomModal from './RoomModal'
 import DeleteRoomModal from './DeleteRoomModal'
@@ -116,6 +117,19 @@ export default function RoomDetailPage({
           if (thermostat?.state?.mode) {
             setHvacMode(thermostat.state.mode)
           }
+
+          // Initialize actuator states
+          const lightDev = data.devices?.find((d) => d.type === 'light')
+          const acDev = data.devices?.find((d) => d.type === 'thermostat')
+          const tvDev = data.devices?.find((d) => d.type === 'tv')
+          const fridgeDev = data.devices?.find((d) => d.externalId?.includes('fridge') || d.name?.toLowerCase().includes('fridge'))
+
+          setDevices({
+            light: Boolean(lightDev?.state?.on ?? true),
+            ac: Boolean(acDev?.state?.power ?? acDev?.state?.on ?? true),
+            tv: Boolean(tvDev?.state?.power ?? tvDev?.state?.on ?? false),
+            fridge: Boolean(fridgeDev?.state?.on ?? true),
+          })
         }
       } catch (err) {
         console.warn('Backend room detail fetch error:', err.message)
@@ -828,6 +842,121 @@ export default function RoomDetailPage({
             )
           })()}
 
+          {/* Integrated Systems Control (Direct Hardware Relays) */}
+          <div className="bg-white rounded-2xl p-6 border border-[#E5E7EB] shadow-[0_2px_8px_-2px_rgba(11,31,58,0.04)]">
+            <div className="flex items-center justify-between pb-3 border-b border-[#F1F5F9] mb-4">
+              <div>
+                <h3 className="font-headline font-bold text-base text-[#0B1F3A]">
+                  Integrated Systems Control
+                </h3>
+                <p className="text-xs text-[#64748B]">
+                  Direct hardware relay actuators powered by {currentRoom.hubDeviceId || 'SMART_98B9E0F90108'}
+                </p>
+              </div>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                Relays Active
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {/* Main Lights */}
+              <button
+                type="button"
+                onClick={() => toggleDevice('light')}
+                className={`p-4 rounded-2xl text-left transition-all duration-200 cursor-pointer border relative overflow-hidden flex flex-col justify-between min-h-[120px] ${
+                  devices.light
+                    ? 'bg-gradient-to-br from-amber-500 to-amber-600 text-white shadow-md border-amber-400 scale-[1.02]'
+                    : 'bg-[#1E232A] text-gray-400 border-gray-700 hover:border-gray-600'
+                }`}
+              >
+                <div className="flex items-center justify-between w-full">
+                  <div className={`p-2 rounded-xl ${devices.light ? 'bg-white/20 text-white' : 'bg-white/5 text-gray-400'}`}>
+                    <Lightbulb className="w-5 h-5" />
+                  </div>
+                  <span className={`w-2.5 h-2.5 rounded-full ${devices.light ? 'bg-white shadow-sm' : 'bg-gray-600'}`} />
+                </div>
+                <div>
+                  <div className="font-bold text-sm tracking-tight">Main Lights</div>
+                  <div className={`text-[11px] font-extrabold uppercase mt-0.5 ${devices.light ? 'text-amber-100' : 'text-gray-500'}`}>
+                    {devices.light ? 'ON' : 'OFF'}
+                  </div>
+                </div>
+              </button>
+
+              {/* Air Conditioner */}
+              <button
+                type="button"
+                onClick={() => toggleDevice('ac')}
+                className={`p-4 rounded-2xl text-left transition-all duration-200 cursor-pointer border relative overflow-hidden flex flex-col justify-between min-h-[120px] ${
+                  devices.ac
+                    ? 'bg-gradient-to-br from-sky-500 to-blue-600 text-white shadow-md border-sky-400 scale-[1.02]'
+                    : 'bg-[#1E232A] text-gray-400 border-gray-700 hover:border-gray-600'
+                }`}
+              >
+                <div className="flex items-center justify-between w-full">
+                  <div className={`p-2 rounded-xl ${devices.ac ? 'bg-white/20 text-white' : 'bg-white/5 text-gray-400'}`}>
+                    <Snowflake className="w-5 h-5" />
+                  </div>
+                  <span className={`w-2.5 h-2.5 rounded-full ${devices.ac ? 'bg-white shadow-sm' : 'bg-gray-600'}`} />
+                </div>
+                <div>
+                  <div className="font-bold text-sm tracking-tight">Air Conditioner</div>
+                  <div className={`text-[11px] font-extrabold uppercase mt-0.5 ${devices.ac ? 'text-sky-100' : 'text-gray-500'}`}>
+                    {devices.ac ? 'ON' : 'OFF'}
+                  </div>
+                </div>
+              </button>
+
+              {/* Television */}
+              <button
+                type="button"
+                onClick={() => toggleDevice('tv')}
+                className={`p-4 rounded-2xl text-left transition-all duration-200 cursor-pointer border relative overflow-hidden flex flex-col justify-between min-h-[120px] ${
+                  devices.tv
+                    ? 'bg-gradient-to-br from-purple-600 to-indigo-700 text-white shadow-md border-purple-400 scale-[1.02]'
+                    : 'bg-[#1E232A] text-gray-400 border-gray-700 hover:border-gray-600'
+                }`}
+              >
+                <div className="flex items-center justify-between w-full">
+                  <div className={`p-2 rounded-xl ${devices.tv ? 'bg-white/20 text-white' : 'bg-white/5 text-gray-400'}`}>
+                    <Tv className="w-5 h-5" />
+                  </div>
+                  <span className={`w-2.5 h-2.5 rounded-full ${devices.tv ? 'bg-white shadow-sm' : 'bg-gray-600'}`} />
+                </div>
+                <div>
+                  <div className="font-bold text-sm tracking-tight">Television</div>
+                  <div className={`text-[11px] font-extrabold uppercase mt-0.5 ${devices.tv ? 'text-purple-100' : 'text-gray-500'}`}>
+                    {devices.tv ? 'ON' : 'OFF'}
+                  </div>
+                </div>
+              </button>
+
+              {/* Minibar Fridge */}
+              <button
+                type="button"
+                onClick={() => toggleDevice('fridge')}
+                className={`p-4 rounded-2xl text-left transition-all duration-200 cursor-pointer border relative overflow-hidden flex flex-col justify-between min-h-[120px] ${
+                  devices.fridge
+                    ? 'bg-gradient-to-br from-teal-500 to-emerald-600 text-white shadow-md border-teal-400 scale-[1.02]'
+                    : 'bg-[#1E232A] text-gray-400 border-gray-700 hover:border-gray-600'
+                }`}
+              >
+                <div className="flex items-center justify-between w-full">
+                  <div className={`p-2 rounded-xl ${devices.fridge ? 'bg-white/20 text-white' : 'bg-white/5 text-gray-400'}`}>
+                    <Refrigerator className="w-5 h-5" />
+                  </div>
+                  <span className={`w-2.5 h-2.5 rounded-full ${devices.fridge ? 'bg-white shadow-sm' : 'bg-gray-600'}`} />
+                </div>
+                <div>
+                  <div className="font-bold text-sm tracking-tight">Minibar Fridge</div>
+                  <div className={`text-[11px] font-extrabold uppercase mt-0.5 ${devices.fridge ? 'text-teal-100' : 'text-gray-500'}`}>
+                    {devices.fridge ? 'ON' : 'OFF'}
+                  </div>
+                </div>
+              </button>
+            </div>
+          </div>
+
           {/* Architectural Lighting Scenes */}
           <div className="bg-white rounded-2xl p-6 border border-[#E5E7EB] shadow-[0_2px_8px_-2px_rgba(11,31,58,0.04)]">
             <div className="flex items-center justify-between pb-3 border-b border-[#F1F5F9] mb-4">
@@ -1001,6 +1130,58 @@ export default function RoomDetailPage({
                 <Plus className="w-3.5 h-3.5 text-[#C9A227]" />
                 <span>{isAddDeviceOpen ? 'Cancel' : 'Add Device'}</span>
               </button>
+            </div>
+
+            {/* Master Connected Hardware Controller (Matching Physical Hardware Setup) */}
+            <div className="mb-4 p-3.5 rounded-xl bg-[#0B1F3A] text-white border border-white/10 shadow-sm flex items-center justify-between">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0">
+                  <Wifi className="w-5 h-5 text-emerald-400 animate-pulse" />
+                </div>
+                <div className="truncate">
+                  <div className="flex items-center gap-2">
+                    <span className="font-headline font-bold text-sm text-white">Room Controller</span>
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-emerald-500/20 text-emerald-400 uppercase tracking-wider">
+                      Connected
+                    </span>
+                  </div>
+                  <div className="text-xs font-mono text-emerald-300/90 tracking-wide mt-0.5 truncate">
+                    {currentRoom.hubDeviceId || 'SMART_98B9E0F90108'}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(true)}
+                  className="p-1.5 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                  title="Configure Controller Hardware ID"
+                >
+                  <Edit3 className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const hub = currentRoom.hubDeviceId || 'SMART_98B9E0F90108'
+                    if (window.confirm(`Unlink Room Controller (${hub}) from this suite?`)) {
+                      try {
+                        const num = currentRoom.number?.replace?.(/Room\s*/i, '') || currentRoom.number || roomId
+                        await deviceService.assignEsp32Hub(num, '')
+                        triggerToast('Room Controller unlinked')
+                        const refreshed = await roomsService.getRoomDetail(currentRoom.id || roomId)
+                        if (refreshed) setRoomDetail(refreshed)
+                      } catch (e) {
+                        triggerToast('Unlink error')
+                      }
+                    }
+                  }}
+                  className="p-1.5 rounded-lg text-red-400 hover:text-red-300 hover:bg-red-500/20 transition-colors cursor-pointer"
+                  title="Unlink Controller"
+                >
+                  <Trash2 className="w-4 h-4 text-red-400" />
+                </button>
+              </div>
             </div>
 
             {/* Direct Inline Add Device Form */}
