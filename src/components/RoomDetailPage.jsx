@@ -40,6 +40,7 @@ import {
   Flame,
   Activity,
   Wifi,
+  WifiOff,
 } from 'lucide-react'
 import RoomModal from './RoomModal'
 import DeleteRoomModal from './DeleteRoomModal'
@@ -89,6 +90,9 @@ export default function RoomDetailPage({
   })
 
   const [localDustbinFill, setLocalDustbinFill] = useState(null)
+  const [isEditingHub, setIsEditingHub] = useState(false)
+  const [hubInput, setHubInput] = useState('')
+  const [savingHub, setSavingHub] = useState(false)
 
   const triggerToast = (msg) => {
     setToastMessage(msg)
@@ -155,6 +159,10 @@ export default function RoomDetailPage({
   const isOccupied = Boolean(currentRoom.occupied)
   const isAlert = currentRoom.status === 'alert' || (currentRoom.openAlerts && currentRoom.openAlerts > 0)
   const isDnd = currentRoom.status === 'dnd' || dndActive
+  const linkedHubId =
+    currentRoom.hubDeviceId ||
+    currentRoom.devices?.find((d) => d.capabilities?.hubDeviceId)?.capabilities?.hubDeviceId ||
+    null
 
   // Visual photo gallery state & URL normalization (must be declared before early returns)
   const [activePhotoIndex, setActivePhotoIndex] = useState(0)
@@ -395,7 +403,7 @@ export default function RoomDetailPage({
         </div>
 
         {/* Quick Action Controls */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={toggleDoorLock}
             className={`h-9 px-3.5 rounded-lg border text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
@@ -564,18 +572,18 @@ export default function RoomDetailPage({
         {/* Left Column (7 cols): Climate Controller & Architectural Lighting */}
         <div className="lg:col-span-7 space-y-6">
           {/* Climate Controller */}
-          <div className="bg-white rounded-2xl p-6 border border-[#E5E7EB] shadow-[0_2px_8px_-2px_rgba(11,31,58,0.04)]">
-            <div className="flex items-center justify-between pb-3 border-b border-[#F1F5F9] mb-5">
-              <div>
-                <h3 className="font-headline font-bold text-base text-[#0B1F3A]">
+          <div className="bg-white rounded-2xl p-4 sm:p-6 border border-[#E5E7EB] shadow-[0_2px_8px_-2px_rgba(11,31,58,0.04)]">
+            <div className="flex items-center justify-between pb-3 border-b border-[#F1F5F9] mb-5 gap-3">
+              <div className="min-w-0">
+                <h3 className="font-headline font-bold text-base text-[#0B1F3A] truncate">
                   Precision Climate & HVAC Control
                 </h3>
-                <p className="text-xs text-[#64748B]">
+                <p className="text-xs text-[#64748B] truncate sm:whitespace-normal">
                   Smart thermostat integrated via hotel BACnet / Zigbee adapter
                 </p>
               </div>
 
-              <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-[#ECFDF5] text-[#059669] flex items-center gap-1.5">
+              <span className="shrink-0 text-xs font-bold px-2.5 py-1 rounded-full bg-[#ECFDF5] text-[#059669] flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
                 <span>Adapter Online</span>
               </span>
@@ -619,33 +627,27 @@ export default function RoomDetailPage({
               </div>
 
               {/* Environmental Telemetry */}
-              <div className="sm:col-span-7 space-y-3">
-                <div className="p-3.5 rounded-xl bg-[#F9F9F7] border border-[#E5E7EB] flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-[#DBEAFE] text-[#2563EB]">
+              <div className="sm:col-span-7 space-y-2.5">
+                <div className="p-3 rounded-xl bg-[#F9F9F7] border border-[#E5E7EB] flex items-center justify-between">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="p-2 rounded-lg bg-[#DBEAFE] text-[#2563EB] shrink-0">
                       <Droplets className="w-4 h-4" />
                     </div>
-                    <div>
-                      <span className="text-xs font-bold text-[#0B1F3A]">Relative Humidity</span>
-                      <div className="text-[11px] text-[#64748B]">Optimal comfort zone</div>
-                    </div>
+                    <span className="text-xs font-bold text-[#0B1F3A] truncate">Relative Humidity</span>
                   </div>
-                  <span className="text-sm font-bold text-[#0B1F3A]">
+                  <span className="text-sm font-bold text-[#0B1F3A] shrink-0 pl-2">
                     {currentRoom.humidity !== undefined && currentRoom.humidity !== null ? `${Number(currentRoom.humidity).toFixed(0)}%` : '46%'}
                   </span>
                 </div>
 
-                <div className="p-3.5 rounded-xl bg-[#F9F9F7] border border-[#E5E7EB] flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-[#CCFBF1] text-[#0D9488]">
+                <div className="p-3 rounded-xl bg-[#F9F9F7] border border-[#E5E7EB] flex items-center justify-between">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="p-2 rounded-lg bg-[#CCFBF1] text-[#0D9488] shrink-0">
                       <Wind className="w-4 h-4" />
                     </div>
-                    <div>
-                      <span className="text-xs font-bold text-[#0B1F3A]">Indoor Air Quality</span>
-                      <div className="text-[11px] text-[#64748B]">BME680 VOC / Gas Index</div>
-                    </div>
+                    <span className="text-xs font-bold text-[#0B1F3A] truncate">Indoor Air Quality</span>
                   </div>
-                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full shrink-0 ${
                     String(currentRoom.iaq || '').toLowerCase().includes('poor')
                       ? 'bg-[#FEE2E2] text-[#DC2626]'
                       : 'bg-[#DCFCE7] text-[#15803D]'
@@ -654,17 +656,14 @@ export default function RoomDetailPage({
                   </span>
                 </div>
 
-                <div className="p-3.5 rounded-xl bg-[#F9F9F7] border border-[#E5E7EB] flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-[#FEF3C7] text-[#D97706]">
+                <div className="p-3 rounded-xl bg-[#F9F9F7] border border-[#E5E7EB] flex items-center justify-between">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="p-2 rounded-lg bg-[#FEF3C7] text-[#D97706] shrink-0">
                       <Gauge className="w-4 h-4" />
                     </div>
-                    <div>
-                      <span className="text-xs font-bold text-[#0B1F3A]">Barometric Pressure</span>
-                      <div className="text-[11px] text-[#64748B]">BME680 Atmospheric Sensor</div>
-                    </div>
+                    <span className="text-xs font-bold text-[#0B1F3A] truncate">Barometric Pressure</span>
                   </div>
-                  <span className="text-sm font-bold text-[#0B1F3A]">
+                  <span className="text-sm font-bold text-[#0B1F3A] shrink-0 pl-2">
                     {currentRoom.pressure ? `${Number(currentRoom.pressure).toFixed(1)} hPa` : '1013.2 hPa'}
                   </span>
                 </div>
@@ -736,7 +735,7 @@ export default function RoomDetailPage({
             const isDustbinFull = currentDustbinFill >= 85
 
             return (
-              <div className="bg-white rounded-2xl p-6 border border-[#E5E7EB] shadow-[0_2px_8px_-2px_rgba(11,31,58,0.04)]">
+              <div className="bg-white rounded-2xl p-4 sm:p-6 border border-[#E5E7EB] shadow-[0_2px_8px_-2px_rgba(11,31,58,0.04)]">
                 <div className="flex items-center justify-between pb-3 border-b border-[#F1F5F9] mb-4">
                   <div className="flex items-center gap-2.5">
                     <div className={`p-2 rounded-xl ${isDustbinFull ? 'bg-[#FEE2E2] text-[#DC2626]' : 'bg-[#FEF3C7] text-[#D97706]'}`}>
@@ -842,123 +841,8 @@ export default function RoomDetailPage({
             )
           })()}
 
-          {/* Integrated Systems Control (Direct Hardware Relays) */}
-          <div className="bg-white rounded-2xl p-6 border border-[#E5E7EB] shadow-[0_2px_8px_-2px_rgba(11,31,58,0.04)]">
-            <div className="flex items-center justify-between pb-3 border-b border-[#F1F5F9] mb-4">
-              <div>
-                <h3 className="font-headline font-bold text-base text-[#0B1F3A]">
-                  Integrated Systems Control
-                </h3>
-                <p className="text-xs text-[#64748B]">
-                  Direct hardware relay actuators powered by {currentRoom.hubDeviceId || 'SMART_98B9E0F90108'}
-                </p>
-              </div>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                Relays Active
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {/* Main Lights */}
-              <button
-                type="button"
-                onClick={() => toggleDevice('light')}
-                className={`p-4 rounded-2xl text-left transition-all duration-200 cursor-pointer border relative overflow-hidden flex flex-col justify-between min-h-[120px] ${
-                  devices.light
-                    ? 'bg-gradient-to-br from-amber-500 to-amber-600 text-white shadow-md border-amber-400 scale-[1.02]'
-                    : 'bg-[#1E232A] text-gray-400 border-gray-700 hover:border-gray-600'
-                }`}
-              >
-                <div className="flex items-center justify-between w-full">
-                  <div className={`p-2 rounded-xl ${devices.light ? 'bg-white/20 text-white' : 'bg-white/5 text-gray-400'}`}>
-                    <Lightbulb className="w-5 h-5" />
-                  </div>
-                  <span className={`w-2.5 h-2.5 rounded-full ${devices.light ? 'bg-white shadow-sm' : 'bg-gray-600'}`} />
-                </div>
-                <div>
-                  <div className="font-bold text-sm tracking-tight">Main Lights</div>
-                  <div className={`text-[11px] font-extrabold uppercase mt-0.5 ${devices.light ? 'text-amber-100' : 'text-gray-500'}`}>
-                    {devices.light ? 'ON' : 'OFF'}
-                  </div>
-                </div>
-              </button>
-
-              {/* Air Conditioner */}
-              <button
-                type="button"
-                onClick={() => toggleDevice('ac')}
-                className={`p-4 rounded-2xl text-left transition-all duration-200 cursor-pointer border relative overflow-hidden flex flex-col justify-between min-h-[120px] ${
-                  devices.ac
-                    ? 'bg-gradient-to-br from-sky-500 to-blue-600 text-white shadow-md border-sky-400 scale-[1.02]'
-                    : 'bg-[#1E232A] text-gray-400 border-gray-700 hover:border-gray-600'
-                }`}
-              >
-                <div className="flex items-center justify-between w-full">
-                  <div className={`p-2 rounded-xl ${devices.ac ? 'bg-white/20 text-white' : 'bg-white/5 text-gray-400'}`}>
-                    <Snowflake className="w-5 h-5" />
-                  </div>
-                  <span className={`w-2.5 h-2.5 rounded-full ${devices.ac ? 'bg-white shadow-sm' : 'bg-gray-600'}`} />
-                </div>
-                <div>
-                  <div className="font-bold text-sm tracking-tight">Air Conditioner</div>
-                  <div className={`text-[11px] font-extrabold uppercase mt-0.5 ${devices.ac ? 'text-sky-100' : 'text-gray-500'}`}>
-                    {devices.ac ? 'ON' : 'OFF'}
-                  </div>
-                </div>
-              </button>
-
-              {/* Television */}
-              <button
-                type="button"
-                onClick={() => toggleDevice('tv')}
-                className={`p-4 rounded-2xl text-left transition-all duration-200 cursor-pointer border relative overflow-hidden flex flex-col justify-between min-h-[120px] ${
-                  devices.tv
-                    ? 'bg-gradient-to-br from-purple-600 to-indigo-700 text-white shadow-md border-purple-400 scale-[1.02]'
-                    : 'bg-[#1E232A] text-gray-400 border-gray-700 hover:border-gray-600'
-                }`}
-              >
-                <div className="flex items-center justify-between w-full">
-                  <div className={`p-2 rounded-xl ${devices.tv ? 'bg-white/20 text-white' : 'bg-white/5 text-gray-400'}`}>
-                    <Tv className="w-5 h-5" />
-                  </div>
-                  <span className={`w-2.5 h-2.5 rounded-full ${devices.tv ? 'bg-white shadow-sm' : 'bg-gray-600'}`} />
-                </div>
-                <div>
-                  <div className="font-bold text-sm tracking-tight">Television</div>
-                  <div className={`text-[11px] font-extrabold uppercase mt-0.5 ${devices.tv ? 'text-purple-100' : 'text-gray-500'}`}>
-                    {devices.tv ? 'ON' : 'OFF'}
-                  </div>
-                </div>
-              </button>
-
-              {/* Minibar Fridge */}
-              <button
-                type="button"
-                onClick={() => toggleDevice('fridge')}
-                className={`p-4 rounded-2xl text-left transition-all duration-200 cursor-pointer border relative overflow-hidden flex flex-col justify-between min-h-[120px] ${
-                  devices.fridge
-                    ? 'bg-gradient-to-br from-teal-500 to-emerald-600 text-white shadow-md border-teal-400 scale-[1.02]'
-                    : 'bg-[#1E232A] text-gray-400 border-gray-700 hover:border-gray-600'
-                }`}
-              >
-                <div className="flex items-center justify-between w-full">
-                  <div className={`p-2 rounded-xl ${devices.fridge ? 'bg-white/20 text-white' : 'bg-white/5 text-gray-400'}`}>
-                    <Refrigerator className="w-5 h-5" />
-                  </div>
-                  <span className={`w-2.5 h-2.5 rounded-full ${devices.fridge ? 'bg-white shadow-sm' : 'bg-gray-600'}`} />
-                </div>
-                <div>
-                  <div className="font-bold text-sm tracking-tight">Minibar Fridge</div>
-                  <div className={`text-[11px] font-extrabold uppercase mt-0.5 ${devices.fridge ? 'text-teal-100' : 'text-gray-500'}`}>
-                    {devices.fridge ? 'ON' : 'OFF'}
-                  </div>
-                </div>
-              </button>
-            </div>
-          </div>
-
           {/* Architectural Lighting Scenes */}
-          <div className="bg-white rounded-2xl p-6 border border-[#E5E7EB] shadow-[0_2px_8px_-2px_rgba(11,31,58,0.04)]">
+          <div className="bg-white rounded-2xl p-4 sm:p-6 border border-[#E5E7EB] shadow-[0_2px_8px_-2px_rgba(11,31,58,0.04)]">
             <div className="flex items-center justify-between pb-3 border-b border-[#F1F5F9] mb-4">
               <h3 className="font-headline font-bold text-base text-[#0B1F3A]">
                 Architectural Lighting Zones & Scenes
@@ -1006,7 +890,7 @@ export default function RoomDetailPage({
           </div>
 
           {/* Energy & Power Management (PZEM-004T & MQ-2 Safety) */}
-          <div className="bg-white rounded-2xl p-6 border border-[#E5E7EB] shadow-[0_2px_8px_-2px_rgba(11,31,58,0.04)]">
+          <div className="bg-white rounded-2xl p-4 sm:p-6 border border-[#E5E7EB] shadow-[0_2px_8px_-2px_rgba(11,31,58,0.04)]">
             <div className="flex items-center justify-between pb-3 border-b border-[#F1F5F9] mb-4">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg bg-[#FEF3C7] text-[#D97706] flex items-center justify-center">
@@ -1111,7 +995,7 @@ export default function RoomDetailPage({
         {/* Right Column (5 cols): Connected Devices & Live Requests/Alerts */}
         <div className="lg:col-span-5 space-y-6">
           {/* Connected Smart Devices Hub */}
-          <div className="bg-white rounded-2xl p-6 border border-[#E5E7EB] shadow-[0_2px_8px_-2px_rgba(11,31,58,0.04)]">
+          <div className="bg-white rounded-2xl p-4 sm:p-6 border border-[#E5E7EB] shadow-[0_2px_8px_-2px_rgba(11,31,58,0.04)]">
             <div className="flex items-center justify-between pb-3 border-b border-[#F1F5F9] mb-4">
               <div>
                 <h3 className="font-headline font-bold text-base text-[#0B1F3A]">
@@ -1133,56 +1017,137 @@ export default function RoomDetailPage({
             </div>
 
             {/* Master Connected Hardware Controller (Matching Physical Hardware Setup) */}
-            <div className="mb-4 p-3.5 rounded-xl bg-[#0B1F3A] text-white border border-white/10 shadow-sm flex items-center justify-between">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0">
-                  <Wifi className="w-5 h-5 text-emerald-400 animate-pulse" />
+            {linkedHubId && !isEditingHub ? (
+              <div className="mb-4 p-3.5 rounded-xl bg-[#0B1F3A] text-white border border-white/10 shadow-sm flex items-center justify-between">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0">
+                    <Wifi className="w-5 h-5 text-emerald-400 animate-pulse" />
+                  </div>
+                  <div className="truncate">
+                    <div className="flex items-center gap-2">
+                      <span className="font-headline font-bold text-sm text-white">Room Controller</span>
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-emerald-500/20 text-emerald-400 uppercase tracking-wider">
+                        Connected
+                      </span>
+                    </div>
+                    <div className="text-xs font-mono text-emerald-300/90 tracking-wide mt-0.5 truncate">
+                      {linkedHubId}
+                    </div>
+                  </div>
                 </div>
-                <div className="truncate">
-                  <div className="flex items-center gap-2">
-                    <span className="font-headline font-bold text-sm text-white">Room Controller</span>
-                    <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-emerald-500/20 text-emerald-400 uppercase tracking-wider">
-                      Connected
-                    </span>
-                  </div>
-                  <div className="text-xs font-mono text-emerald-300/90 tracking-wide mt-0.5 truncate">
-                    {currentRoom.hubDeviceId || 'SMART_98B9E0F90108'}
-                  </div>
+
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setHubInput(linkedHubId)
+                      setIsEditingHub(true)
+                    }}
+                    className="p-1.5 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                    title="Change Controller Hardware ID"
+                  >
+                    <Edit3 className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (window.confirm(`Unlink Room Controller (${linkedHubId}) from this suite?`)) {
+                        try {
+                          const num = currentRoom.number?.replace?.(/Room\s*/i, '') || currentRoom.number || roomId
+                          await deviceService.assignEsp32Hub(num, '')
+                          triggerToast('Room Controller unlinked')
+                          const refreshed = await roomsService.getRoomDetail(currentRoom.id || roomId)
+                          if (refreshed) setRoomDetail(refreshed)
+                        } catch (e) {
+                          triggerToast('Unlink error')
+                        }
+                      }
+                    }}
+                    className="p-1.5 rounded-lg text-red-400 hover:text-red-300 hover:bg-red-500/20 transition-colors cursor-pointer"
+                    title="Unlink Controller"
+                  >
+                    <Trash2 className="w-4 h-4 text-red-400" />
+                  </button>
                 </div>
               </div>
+            ) : (
+              <div className="mb-4 p-3.5 rounded-xl bg-[#0B1F3A] text-white border border-[#C9A227]/40 shadow-sm space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${linkedHubId ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-300'}`}>
+                      {linkedHubId ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-headline font-bold text-sm text-white">Room Controller</span>
+                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider ${
+                          linkedHubId ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-300'
+                        }`}>
+                          {linkedHubId ? 'Edit Device ID' : 'Manual Entry Required'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-white/70">
+                        {linkedHubId
+                          ? 'Update the physical controller Device ID for this suite.'
+                          : 'No controller assigned yet. Manually enter the Device ID to connect sensors & actuators.'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
 
-              <div className="flex items-center gap-1.5 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setIsEditModalOpen(true)}
-                  className="p-1.5 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-                  title="Configure Controller Hardware ID"
-                >
-                  <Edit3 className="w-4 h-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    const hub = currentRoom.hubDeviceId || 'SMART_98B9E0F90108'
-                    if (window.confirm(`Unlink Room Controller (${hub}) from this suite?`)) {
-                      try {
-                        const num = currentRoom.number?.replace?.(/Room\s*/i, '') || currentRoom.number || roomId
-                        await deviceService.assignEsp32Hub(num, '')
-                        triggerToast('Room Controller unlinked')
-                        const refreshed = await roomsService.getRoomDetail(currentRoom.id || roomId)
-                        if (refreshed) setRoomDetail(refreshed)
-                      } catch (e) {
-                        triggerToast('Unlink error')
-                      }
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault()
+                    const cleanId = hubInput.trim()
+                    if (!cleanId && !linkedHubId) return
+                    try {
+                      setSavingHub(true)
+                      const num = currentRoom.number?.replace?.(/Room\s*/i, '') || currentRoom.number || roomId
+                      await deviceService.assignEsp32Hub(num, cleanId)
+                      triggerToast(cleanId ? `Controller ${cleanId} linked!` : 'Controller unlinked')
+                      setIsEditingHub(false)
+                      setHubInput('')
+                      const refreshed = await roomsService.getRoomDetail(currentRoom.id || roomId)
+                      if (refreshed) setRoomDetail(refreshed)
+                    } catch (err) {
+                      triggerToast('Failed to save Controller Device ID')
+                    } finally {
+                      setSavingHub(false)
                     }
                   }}
-                  className="p-1.5 rounded-lg text-red-400 hover:text-red-300 hover:bg-red-500/20 transition-colors cursor-pointer"
-                  title="Unlink Controller"
+                  className="flex items-center gap-2 pt-1"
                 >
-                  <Trash2 className="w-4 h-4 text-red-400" />
-                </button>
+                  <input
+                    type="text"
+                    value={hubInput}
+                    onChange={(e) => setHubInput(e.target.value)}
+                    placeholder="Enter Device ID (e.g. SMART_98B9E0F90108)"
+                    className="hotel-input grow text-xs font-mono py-1.5 px-3 bg-white text-[#0B1F3A] rounded-lg"
+                    autoFocus={isEditingHub || !linkedHubId}
+                  />
+                  <button
+                    type="submit"
+                    disabled={savingHub || (!hubInput.trim() && !linkedHubId)}
+                    className="h-8 px-3 rounded-lg bg-[#C9A227] hover:bg-[#B58F1F] text-[#0B1F3A] text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer shrink-0 disabled:opacity-50"
+                  >
+                    <Check className="w-3.5 h-3.5 text-[#0B1F3A]" />
+                    <span>{savingHub ? 'Saving...' : linkedHubId ? 'Update ID' : 'Link Controller'}</span>
+                  </button>
+                  {linkedHubId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsEditingHub(false)
+                        setHubInput('')
+                      }}
+                      className="h-8 px-2.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-colors cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </form>
               </div>
-            </div>
+            )}
 
             {/* Direct Inline Add Device Form */}
             {isAddDeviceOpen && (
@@ -1330,7 +1295,7 @@ export default function RoomDetailPage({
           </div>
 
           {/* Active Guest Requests & History from Backend */}
-          <div className="bg-white rounded-2xl p-6 border border-[#E5E7EB] shadow-[0_2px_8px_-2px_rgba(11,31,58,0.04)]">
+          <div className="bg-white rounded-2xl p-4 sm:p-6 border border-[#E5E7EB] shadow-[0_2px_8px_-2px_rgba(11,31,58,0.04)]">
             <div className="flex items-center justify-between pb-3 border-b border-[#F1F5F9] mb-4">
               <h3 className="font-headline font-bold text-base text-[#0B1F3A]">
                 Room Requests & History
@@ -1375,7 +1340,7 @@ export default function RoomDetailPage({
           </div>
 
           {/* Active Hardware Incidents / Alerts from Backend */}
-          <div className="bg-white rounded-2xl p-6 border border-[#E5E7EB] shadow-[0_2px_8px_-2px_rgba(11,31,58,0.04)]">
+          <div className="bg-white rounded-2xl p-4 sm:p-6 border border-[#E5E7EB] shadow-[0_2px_8px_-2px_rgba(11,31,58,0.04)]">
             <div className="flex items-center justify-between pb-3 border-b border-[#F1F5F9] mb-4">
               <h3 className="font-headline font-bold text-base text-[#0B1F3A]">
                 Hardware Incidents

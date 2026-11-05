@@ -245,8 +245,6 @@ export default function RoomModal({
       } else if (foundHub?.externalId?.startsWith('SMART_')) {
         const m = foundHub.externalId.match(/^(SMART_[A-Za-z0-9_-]+)/)
         setHubDeviceId(m ? m[1] : foundHub.externalId)
-      } else if (room.number) {
-        setHubDeviceId(`SMART_${room.number}`)
       } else {
         setHubDeviceId('')
       }
@@ -345,18 +343,20 @@ export default function RoomModal({
   }
 
   const handleApplySmartHub = () => {
-    const effectiveHubId = hubDeviceId.trim() || `SMART_${number.trim() || '101'}`
-    if (!hubDeviceId.trim()) {
-      setHubDeviceId(effectiveHubId)
+    const enteredId = hubDeviceId.trim()
+    if (!enteredId) {
+      setError('Please manually enter the controller Device ID first before linking the hardware bundle.')
+      return
     }
+    setError(null)
     const esp32Bundle = [
-      { name: 'Suite Light (Relay 1)', type: 'light', externalId: `${effectiveHubId}_light`, isActive: true },
-      { name: 'Air Conditioner (Relay 2)', type: 'thermostat', externalId: `${effectiveHubId}_ac`, isActive: true },
-      { name: 'Smart TV (Relay 3)', type: 'tv', externalId: `${effectiveHubId}_tv`, isActive: true },
-      { name: 'Minibar Fridge (Relay 4)', type: 'other', externalId: `${effectiveHubId}_fridge`, isActive: true },
-      { name: 'AC Power Meter (PZEM-004T)', type: 'meter', externalId: `${effectiveHubId}_pzem`, isActive: true },
-      { name: 'Climate & IAQ Sensor (BME680)', type: 'sensor', externalId: `${effectiveHubId}_bme680`, isActive: true },
-      { name: 'Smoke & Gas Detector (MQ-2)', type: 'sensor', externalId: `${effectiveHubId}_mq2`, isActive: true },
+      { name: 'Suite Light (Relay 1)', type: 'light', externalId: `${enteredId}_light`, isActive: true },
+      { name: 'Air Conditioner (Relay 2)', type: 'thermostat', externalId: `${enteredId}_ac`, isActive: true },
+      { name: 'Smart TV (Relay 3)', type: 'tv', externalId: `${enteredId}_tv`, isActive: true },
+      { name: 'Minibar Fridge (Relay 4)', type: 'other', externalId: `${enteredId}_fridge`, isActive: true },
+      { name: 'AC Power Meter (PZEM-004T)', type: 'meter', externalId: `${enteredId}_pzem`, isActive: true },
+      { name: 'Climate & IAQ Sensor (BME680)', type: 'sensor', externalId: `${enteredId}_bme680`, isActive: true },
+      { name: 'Smoke & Gas Detector (MQ-2)', type: 'sensor', externalId: `${enteredId}_mq2`, isActive: true },
     ]
     setRoomDevices(esp32Bundle)
   }
@@ -504,12 +504,16 @@ export default function RoomModal({
     try {
       setLoading(true)
       await onSubmit(payload)
-      const effectiveHubId = hubDeviceId.trim() || `SMART_${trimmedNumber}`
-      if (effectiveHubId && trimmedNumber) {
+      const enteredHubId = hubDeviceId.trim()
+      if (trimmedNumber) {
         try {
-          await deviceService.assignEsp32Hub(trimmedNumber, effectiveHubId)
+          if (enteredHubId) {
+            await deviceService.assignEsp32Hub(trimmedNumber, enteredHubId)
+          } else if (room?.hubDeviceId) {
+            await deviceService.assignEsp32Hub(trimmedNumber, '')
+          }
         } catch (hubErr) {
-          console.warn('ESP32 Hub assignment auto-link notice:', hubErr.message)
+          console.warn('ESP32 Hub assignment notice:', hubErr.message)
         }
       }
       onClose()
@@ -571,13 +575,7 @@ export default function RoomModal({
                 type="text"
                 required
                 value={number}
-                onChange={(e) => {
-                  const val = e.target.value
-                  setNumber(val)
-                  if (!hubDeviceId || hubDeviceId === `SMART_${number}`) {
-                    setHubDeviceId(val.trim() ? `SMART_${val.trim()}` : '')
-                  }
-                }}
+                onChange={(e) => setNumber(e.target.value)}
                 placeholder="e.g. 301, 402B, Villa 1"
                 className="hotel-input w-full text-sm font-semibold"
                 autoFocus
@@ -695,13 +693,13 @@ export default function RoomModal({
                   </div>
                   <div>
                     <span className="text-xs font-bold text-[#0B1F3A] flex items-center gap-1.5">
-                      <span>ESP32 Smart Room Hub</span>
-                      <span className="px-1.5 py-0.5 bg-[#DCFCE7] text-[#15803D] text-[9px] rounded-sm font-semibold uppercase tracking-wider">
-                        1 Device ID Bundle
+                      <span>ESP32 Smart Room Controller</span>
+                      <span className="px-1.5 py-0.5 bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A] text-[9px] rounded-sm font-semibold uppercase tracking-wider">
+                        Manual Entry Required
                       </span>
                     </span>
                     <p className="text-[10px] text-[#64748B]">
-                      Assigning this Device ID links 4 Relays (Light, AC, TV, Fridge) & 3 Sensors (BME680, PZEM-004T, MQ-2).
+                      Enter the unique Device ID programmed on the physical hardware controller to link its relays & sensors.
                     </p>
                   </div>
                 </div>
@@ -713,7 +711,7 @@ export default function RoomModal({
                     type="text"
                     value={hubDeviceId}
                     onChange={(e) => setHubDeviceId(e.target.value)}
-                    placeholder={`e.g. SMART_${number.trim() || '101'}`}
+                    placeholder="Enter Controller Device ID (e.g. SMART_98B9E0F90108)"
                     className="hotel-input w-full text-xs font-mono py-2 pl-3 bg-white"
                   />
                 </div>
@@ -724,7 +722,7 @@ export default function RoomModal({
                   title="Populate actuators (Light, AC, TV, Fridge) and sensors (BME680, PZEM-004T, MQ-2)"
                 >
                   <Sparkles className="w-3.5 h-3.5 text-[#0B1F3A]" />
-                  <span>Auto-Provision Hub Bundle</span>
+                  <span>Link Hardware Bundle</span>
                 </button>
               </div>
             </div>

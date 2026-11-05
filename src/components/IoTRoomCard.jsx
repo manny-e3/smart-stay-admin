@@ -342,12 +342,21 @@ export default function IoTRoomCard({
         {/* Connected Controller Hardware Indicator */}
         <div className="flex items-center justify-between px-1 mb-2 text-[10px]">
           <span className="font-bold text-[#64748B] uppercase tracking-wider flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span>Room Controller:</span>
-            <span className="font-mono text-[#0B1F3A] font-semibold">{room.hubDeviceId || 'SMART_98B9E0F90108'}</span>
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${
+                room.hubDeviceId ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'
+              }`}
+            />
+            <span>Room Controller</span>
           </span>
-          <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-            ONLINE
+          <span
+            className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${
+              room.hubDeviceId
+                ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
+                : 'text-slate-500 bg-slate-50 border-slate-200'
+            }`}
+          >
+            {room.hubDeviceId ? 'ONLINE' : 'UNLINKED'}
           </span>
         </div>
 
