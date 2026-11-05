@@ -19,6 +19,7 @@ import {
   Eye,
   Gauge,
 } from 'lucide-react'
+import { resolvePhotoUrl } from '../utils/photoUrl'
 
 export default function IoTRoomCard({
   room,
@@ -120,10 +121,8 @@ export default function IoTRoomCard({
       })()
     : []
   const photoCount = photos.length || (room.imageUrl || room.image ? 1 : 0)
-  let roomPhoto = room.imageUrl || photos[0] || room.image || '/luxury_hotel_suite_1792659405708.jpg'
-  if (roomPhoto && roomPhoto.startsWith('/uploads/')) {
-    roomPhoto = `http://localhost:5000${roomPhoto}`
-  }
+  const rawPhoto = room.imageUrl || photos[0] || room.image || '/luxury_hotel_suite_1792659405708.jpg'
+  const roomPhoto = resolvePhotoUrl(rawPhoto)
 
   // Normalized values
   const roomNumber = room.number?.startsWith('Room') ? room.number : `Room ${room.number}`

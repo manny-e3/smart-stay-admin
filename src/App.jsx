@@ -35,6 +35,7 @@ import ProtectedRoute from './components/ProtectedRoute'
 import { useAuth } from './context/AuthContext'
 import roomsService from './services/roomsService'
 import requestsService from './services/requestsService'
+import deviceService from './services/deviceService'
 import { onSocketEvent } from './services/socket'
 
 export default function App() {
@@ -126,19 +127,17 @@ export default function App() {
 
   // Toggle smart device on room card or detail view
   const handleToggleDevice = (roomId, deviceKey) => {
+    const targetRoom = rooms.find((r) => r.id === roomId)
+    const currentDevices =
+      targetRoom?.devices && typeof targetRoom.devices === 'object' && !Array.isArray(targetRoom.devices)
+        ? targetRoom.devices
+        : { light: true, fridge: true, ac: true, tv: false }
+    const newState = !currentDevices[deviceKey]
+
+    // 1. Optimistic UI update
     setRooms((prev) =>
       prev.map((r) => {
         if (r.id === roomId) {
-          const currentDevices =
-            r.devices && typeof r.devices === 'object' && !Array.isArray(r.devices)
-              ? r.devices
-              : { light: true, fridge: true, ac: true, tv: false }
-          const newState = !currentDevices[deviceKey]
-          showToast(
-            `${r.number} ${deviceKey.toUpperCase()} turned ${
-              newState ? 'ON' : 'OFF'
-            }`
-          )
           return {
             ...r,
             devices: {
@@ -153,6 +152,15 @@ export default function App() {
         return r
       })
     )
+
+    if (targetRoom) {
+      showToast(`${targetRoom.number} ${deviceKey.toUpperCase()} turned ${newState ? 'ON' : 'OFF'}`)
+      const roomNum = String(targetRoom.number).replace(/Room\s*/i, '').trim()
+      // 2. Dispatch hardware relay command to backend & ESP32
+      deviceService.toggleActuator(roomNum, deviceKey, newState).catch((err) => {
+        console.warn('Hardware toggle notice:', err.message)
+      })
+    }
   }
 
   // Handle room update from detail page

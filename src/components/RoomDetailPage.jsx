@@ -46,6 +46,7 @@ import RoomModal from './RoomModal'
 import DeleteRoomModal from './DeleteRoomModal'
 import roomsService from '../services/roomsService'
 import requestsService from '../services/requestsService'
+import { resolvePhotoUrl } from '../utils/photoUrl'
 
 export default function RoomDetailPage({
   room: propRoom,
@@ -181,16 +182,8 @@ export default function RoomDetailPage({
     if (list.length === 0) {
       list.push('https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=1200&auto=format&fit=crop&q=80')
     }
-    return list
+    return list.map(resolvePhotoUrl)
   }, [currentRoom.images, currentRoom.imageUrl, currentRoom.image])
-
-  const resolvePhotoUrl = (url) => {
-    if (!url) return ''
-    if (url.startsWith('/uploads')) {
-      return `http://localhost:5000${url}`
-    }
-    return url
-  }
 
   // If loading room detail
   if (loading && !roomDetail) {

@@ -29,6 +29,7 @@ import {
 } from 'lucide-react'
 import roomsService from '../services/roomsService'
 import deviceService from '../services/deviceService'
+import { resolvePhotoUrl } from '../utils/photoUrl'
 
 const STANDARD_ROOM_TYPES = [
   'Standard King',
@@ -400,17 +401,14 @@ export default function RoomModal({
 
         // Upload to server uploads directory
         const res = await roomsService.uploadPhoto(dataUrl)
-        const backendUrl = res?.url
-          ? res.url.startsWith('http')
-            ? res.url
-            : `http://localhost:5000${res.url}`
-          : dataUrl
+        const backendUrl = res?.url || dataUrl
 
-        setImages((prev) => [...prev, backendUrl])
+        // Place newly uploaded image at the front as the primary cover photo
+        setImages((prev) => [backendUrl, ...prev.filter((u) => u !== backendUrl)])
       } catch (err) {
         console.warn('Server upload fallback to data URL:', err.message)
         // Graceful fallback to data URL
-        setImages((prev) => [...prev, reader.result])
+        setImages((prev) => [reader.result, ...prev])
       } finally {
         setUploading(false)
         if (fileInputRef.current) fileInputRef.current.value = ''
@@ -433,14 +431,14 @@ export default function RoomModal({
       return
     }
     setError(null)
-    setImages((prev) => [...prev, trimmed])
+    setImages((prev) => [trimmed, ...prev.filter((u) => u !== trimmed)])
     setImageUrlInput('')
   }
 
   // Add Preset
   const handleAddPreset = (presetUrl) => {
     if (!images.includes(presetUrl)) {
-      setImages((prev) => [...prev, presetUrl])
+      setImages((prev) => [presetUrl, ...prev])
     }
   }
 
@@ -919,7 +917,7 @@ export default function RoomModal({
                     className="relative group rounded-xl overflow-hidden border border-[#E5E7EB] bg-white aspect-4/3 shadow-2xs"
                   >
                     <img
-                      src={imgUrl}
+                      src={resolvePhotoUrl(imgUrl)}
                       alt={`Suite photo ${idx + 1}`}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                       onError={(e) => {

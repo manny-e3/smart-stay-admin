@@ -78,6 +78,16 @@ export const deviceService = {
   },
 
   /**
+   * Toggle physical hardware relay (light, ac, tv, fridge)
+   * @param {string|number} roomNumber
+   * @param {string} deviceKey
+   * @param {boolean} state
+   */
+  async toggleActuator(roomNumber, deviceKey, state) {
+    return await api.post(`/integrations/esp32/rooms/${roomNumber}/actuator`, { deviceKey, state }, { skipAuth: true })
+  },
+
+  /**
    * Ingest emergency hardware alert (smoke, high heat, low battery)
    * @param {Object} payload
    */
