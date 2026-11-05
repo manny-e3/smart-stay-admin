@@ -505,13 +505,9 @@ export default function RoomModal({
       setLoading(true)
       await onSubmit(payload)
       const enteredHubId = hubDeviceId.trim()
-      if (trimmedNumber) {
+      if (!isEdit && enteredHubId && trimmedNumber) {
         try {
-          if (enteredHubId) {
-            await deviceService.assignEsp32Hub(trimmedNumber, enteredHubId)
-          } else if (room?.hubDeviceId) {
-            await deviceService.assignEsp32Hub(trimmedNumber, '')
-          }
+          await deviceService.assignEsp32Hub(trimmedNumber, enteredHubId)
         } catch (hubErr) {
           console.warn('ESP32 Hub assignment notice:', hubErr.message)
         }
@@ -684,48 +680,50 @@ export default function RoomModal({
               </button>
             </div>
 
-            {/* Dedicated ESP32 In-Room Hub Integration */}
-            <div className="p-3.5 bg-gradient-to-r from-[#0B1F3A]/5 via-amber-500/5 to-[#C9A227]/10 rounded-xl border border-[#C9A227]/30 space-y-2.5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-[#0B1F3A] text-[#C9A227] flex items-center justify-center text-xs font-bold shadow-xs">
-                    <Wifi className="w-4 h-4 text-[#C9A227]" />
-                  </div>
-                  <div>
-                    <span className="text-xs font-bold text-[#0B1F3A] flex items-center gap-1.5">
-                      <span>ESP32 Smart Room Controller</span>
-                      <span className="px-1.5 py-0.5 bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A] text-[9px] rounded-sm font-semibold uppercase tracking-wider">
-                        Manual Entry Required
+            {/* Dedicated ESP32 In-Room Hub Integration (Initial Setup for New Suite) */}
+            {!isEdit && (
+              <div className="p-3.5 bg-gradient-to-r from-[#0B1F3A]/5 via-amber-500/5 to-[#C9A227]/10 rounded-xl border border-[#C9A227]/30 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-[#0B1F3A] text-[#C9A227] flex items-center justify-center text-xs font-bold shadow-xs">
+                      <Wifi className="w-4 h-4 text-[#C9A227]" />
+                    </div>
+                    <div>
+                      <span className="text-xs font-bold text-[#0B1F3A] flex items-center gap-1.5">
+                        <span>ESP32 Smart Room Controller</span>
+                        <span className="px-1.5 py-0.5 bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A] text-[9px] rounded-sm font-semibold uppercase tracking-wider">
+                          Manual Entry Required
+                        </span>
                       </span>
-                    </span>
-                    <p className="text-[10px] text-[#64748B]">
-                      Enter the unique Device ID programmed on the physical hardware controller to link its relays & sensors.
-                    </p>
+                      <p className="text-[10px] text-[#64748B]">
+                        Enter the unique Device ID programmed on the physical hardware controller to link its relays & sensors.
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="flex items-center gap-2">
-                <div className="relative grow">
-                  <input
-                    type="text"
-                    value={hubDeviceId}
-                    onChange={(e) => setHubDeviceId(e.target.value)}
-                    placeholder="Enter Controller Device ID (e.g. SMART_98B9E0F90108)"
-                    className="hotel-input w-full text-xs font-mono py-2 pl-3 bg-white"
-                  />
+                <div className="flex items-center gap-2">
+                  <div className="relative grow">
+                    <input
+                      type="text"
+                      value={hubDeviceId}
+                      onChange={(e) => setHubDeviceId(e.target.value)}
+                      placeholder="Enter Controller Device ID (e.g. SMART_98B9E0F90108)"
+                      className="hotel-input w-full text-xs font-mono py-2 pl-3 bg-white"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleApplySmartHub}
+                    className="h-9 px-3 rounded-lg bg-[#C9A227] hover:bg-[#B58F1F] text-[#0B1F3A] text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 shadow-2xs"
+                    title="Populate actuators (Light, AC, TV, Fridge) and sensors (BME680, PZEM-004T, MQ-2)"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-[#0B1F3A]" />
+                    <span>Link Hardware Bundle</span>
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleApplySmartHub}
-                  className="h-9 px-3 rounded-lg bg-[#C9A227] hover:bg-[#B58F1F] text-[#0B1F3A] text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 shadow-2xs"
-                  title="Populate actuators (Light, AC, TV, Fridge) and sensors (BME680, PZEM-004T, MQ-2)"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-[#0B1F3A]" />
-                  <span>Link Hardware Bundle</span>
-                </button>
               </div>
-            </div>
+            )}
 
             {/* Quick Hardware Presets */}
             <div className="flex flex-wrap items-center gap-1.5 pt-1">
