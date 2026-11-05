@@ -254,7 +254,7 @@ export default function IoTRoomCard({
               <AlertTriangle className="w-4 h-4 text-white shrink-0" />
               <span>SMOKE DETECTED! In-room siren active</span>
             </div>
-            <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded font-mono">MQ-2 HAZARD</span>
+            <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded font-mono">SMOKE HAZARD</span>
           </div>
         )}
 

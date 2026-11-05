@@ -335,7 +335,7 @@ export default function RoomDetailPage({
               <h4 className="font-bold text-sm tracking-wider uppercase flex items-center gap-2">
                 <span>CRITICAL HAZARD: SMOKE / GAS DETECTED</span>
                 <span className="px-2 py-0.5 rounded-full bg-white text-red-700 text-[10px] font-extrabold uppercase">
-                  MQ-2 Triggered
+                  Smoke Detector Triggered
                 </span>
               </h4>
               <p className="text-xs text-red-100 mt-0.5">
@@ -889,26 +889,21 @@ export default function RoomDetailPage({
             </div>
           </div>
 
-          {/* Energy & Power Management (PZEM-004T & MQ-2 Safety) */}
+          {/* Energy & Power Management (Smart Meter & Smoke Safety) */}
           <div className="bg-white rounded-2xl p-4 sm:p-6 border border-[#E5E7EB] shadow-[0_2px_8px_-2px_rgba(11,31,58,0.04)]">
             <div className="flex items-center justify-between pb-3 border-b border-[#F1F5F9] mb-4">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg bg-[#FEF3C7] text-[#D97706] flex items-center justify-center">
                   <Zap className="w-4 h-4 text-[#D97706]" />
                 </div>
-                <div>
-                  <h3 className="font-headline font-bold text-base text-[#0B1F3A]">
-                    Energy & Real-Time Power Telemetry
-                  </h3>
-                  <p className="text-xs text-[#64748B]">
-                    PZEM-004T v3.0 AC Sub-meter & MQ-2 Safety Sentinel
-                  </p>
-                </div>
+                <h3 className="font-headline font-bold text-base text-[#0B1F3A]">
+                  Energy & Real-Time Power Telemetry
+                </h3>
               </div>
 
-              <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-[#ECFDF5] text-[#059669] flex items-center gap-1.5">
+              <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-[#ECFDF5] text-[#059669] flex items-center gap-1.5 shrink-0">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
-                <span>PZEM Live</span>
+                <span>Smart Meter</span>
               </span>
             </div>
 
@@ -967,25 +962,25 @@ export default function RoomDetailPage({
               </div>
             </div>
 
-            {/* MQ-2 Safety Status Bar */}
-            <div className={`p-3 rounded-xl border flex items-center justify-between text-xs ${
+            {/* Smoke Detector Safety Status Bar */}
+            <div className={`p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs ${
               currentRoom.smokeAlert || (currentRoom.smokeValue && currentRoom.smokeValue > 1800)
                 ? 'bg-[#FEE2E2] border-[#FECACA] text-[#DC2626] font-bold animate-pulse'
                 : 'bg-[#F9F9F7] border-[#E5E7EB] text-[#0B1F3A]'
             }`}>
               <div className="flex items-center gap-2">
-                <Flame className={`w-4 h-4 ${
+                <Flame className={`w-4 h-4 shrink-0 ${
                   currentRoom.smokeAlert || (currentRoom.smokeValue && currentRoom.smokeValue > 1800)
                     ? 'text-[#DC2626]'
                     : 'text-[#059669]'
                 }`} />
                 <span>
                   {currentRoom.smokeAlert || (currentRoom.smokeValue && currentRoom.smokeValue > 1800)
-                    ? 'MQ-2 SMOKE HAZARD TRIGGERED: Local siren active!'
-                    : 'MQ-2 Smoke & Gas Sentinel: Atmosphere Clear'}
+                    ? 'Smoke Hazard Triggered: Local siren active!'
+                    : 'Smoke Detector: Atmosphere Clear'}
                 </span>
               </div>
-              <span className="font-mono text-[11px] text-[#64748B]">
+              <span className="font-mono text-[11px] text-[#64748B] shrink-0">
                 Level: {currentRoom.smokeValue != null ? `${currentRoom.smokeValue} ADC` : '412 ADC'} (Threshold: 1800)
               </span>
             </div>
