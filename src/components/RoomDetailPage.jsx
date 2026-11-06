@@ -78,9 +78,9 @@ export default function RoomDetailPage({
   const [hvacMode, setHvacMode] = useState('cool')
   const [fanSpeed, setFanSpeed] = useState('auto')
   const [devices, setDevices] = useState({
-    light: true,
-    fridge: true,
-    ac: true,
+    light: false,
+    fridge: false,
+    ac: false,
     tv: false,
   })
 
@@ -130,11 +130,12 @@ export default function RoomDetailPage({
           const tvDev = data.devices?.find((d) => d.type === 'tv')
           const fridgeDev = data.devices?.find((d) => d.externalId?.includes('fridge') || d.name?.toLowerCase().includes('fridge'))
 
+          const isDetailOnline = Boolean(data.isOnline ?? data.hubOnline)
           setDevices({
-            light: Boolean(lightDev?.state?.on ?? true),
-            ac: Boolean(acDev?.state?.power ?? acDev?.state?.on ?? true),
-            tv: Boolean(tvDev?.state?.power ?? tvDev?.state?.on ?? false),
-            fridge: Boolean(fridgeDev?.state?.on ?? true),
+            light: Boolean(isDetailOnline && (lightDev?.state?.on ?? false)),
+            ac: Boolean(isDetailOnline && (acDev?.state?.power ?? acDev?.state?.on ?? false)),
+            tv: Boolean(isDetailOnline && (tvDev?.state?.power ?? tvDev?.state?.on ?? false)),
+            fridge: Boolean(isDetailOnline && (fridgeDev?.state?.on ?? false)),
           })
         }
       } catch (err) {
@@ -165,6 +166,10 @@ export default function RoomDetailPage({
     currentRoom.hubDeviceId ||
     currentRoom.devices?.find((d) => d.capabilities?.hubDeviceId)?.capabilities?.hubDeviceId ||
     null
+  const isHubOnline = Boolean(
+    linkedHubId &&
+    (currentRoom.isOnline ?? currentRoom.hubOnline ?? currentRoom.devices?.some((d) => d.online))
+  )
 
   // Visual photo gallery state & URL normalization (must be declared before early returns)
   const [activePhotoIndex, setActivePhotoIndex] = useState(0)
@@ -198,6 +203,14 @@ export default function RoomDetailPage({
   }
 
   const toggleDevice = (key) => {
+    if (!linkedHubId) {
+      triggerToast('Device is not linked')
+      return
+    }
+    if (!isHubOnline) {
+      triggerToast('Device is offline (Hardware not transmitting)')
+      return
+    }
     setDevices((prev) => {
       const updated = { ...prev, [key]: !prev[key] }
       triggerToast(`${key.toUpperCase()} turned ${updated[key] ? 'ON' : 'OFF'}`)
@@ -936,14 +949,14 @@ export default function RoomDetailPage({
               </div>
 
               <span className={`text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 shrink-0 ${
-                linkedHubId
+                isHubOnline
                   ? 'bg-[#ECFDF5] text-[#059669]'
                   : 'bg-slate-100 text-slate-500 border border-slate-200'
               }`}>
                 <span className={`w-1.5 h-1.5 rounded-full ${
-                  linkedHubId ? 'bg-[#10B981] animate-pulse' : 'bg-slate-400'
+                  isHubOnline ? 'bg-[#10B981] animate-pulse' : 'bg-slate-400'
                 }`} />
-                <span>{linkedHubId ? 'Smart Meter' : 'Smart Meter (Offline)'}</span>
+                <span>{isHubOnline ? 'Smart Meter Live' : isLinked ? 'Smart Meter (Offline)' : 'Smart Meter (Unlinked)'}</span>
               </span>
             </div>
 
@@ -957,7 +970,7 @@ export default function RoomDetailPage({
                   <Zap className="w-3.5 h-3.5 text-[#F59E0B]" />
                 </div>
                 <div className="text-base font-bold text-[#0B1F3A]">
-                  {linkedHubId && currentRoom.power != null ? `${Number(currentRoom.power).toFixed(1)} W` : '-- W'}
+                  {isHubOnline && currentRoom.power != null ? `${Number(currentRoom.power).toFixed(1)} W` : '-- W'}
                 </div>
                 <div className="text-[10px] text-[#64748B] mt-0.5">Real-time load</div>
               </div>
@@ -970,7 +983,7 @@ export default function RoomDetailPage({
                   <Activity className="w-3.5 h-3.5 text-[#2563EB]" />
                 </div>
                 <div className="text-base font-bold text-[#0B1F3A]">
-                  {linkedHubId && currentRoom.energy24h != null ? `${Number(currentRoom.energy24h).toFixed(2)} kWh` : '-- kWh'}
+                  {isHubOnline && currentRoom.energy24h != null ? `${Number(currentRoom.energy24h).toFixed(2)} kWh` : '-- kWh'}
                 </div>
                 <div className="text-[10px] text-[#64748B] mt-0.5">Cumulative kWh</div>
               </div>
@@ -983,7 +996,7 @@ export default function RoomDetailPage({
                   <Cpu className="w-3.5 h-3.5 text-[#7C3AED]" />
                 </div>
                 <div className="text-base font-bold text-[#0B1F3A]">
-                  {linkedHubId && currentRoom.voltage != null ? `${Number(currentRoom.voltage).toFixed(1)} V` : '-- V'}
+                  {isHubOnline && currentRoom.voltage != null ? `${Number(currentRoom.voltage).toFixed(1)} V` : '-- V'}
                 </div>
                 <div className="text-[10px] text-[#64748B] mt-0.5">Grid potential</div>
               </div>
@@ -996,7 +1009,7 @@ export default function RoomDetailPage({
                   <Gauge className="w-3.5 h-3.5 text-[#0D9488]" />
                 </div>
                 <div className="text-base font-bold text-[#0B1F3A]">
-                  {linkedHubId && currentRoom.current != null ? `${Number(currentRoom.current).toFixed(2)} A` : '-- A'}
+                  {isHubOnline && currentRoom.current != null ? `${Number(currentRoom.current).toFixed(2)} A` : '-- A'}
                 </div>
                 <div className="text-[10px] text-[#64748B] mt-0.5">Phase draw</div>
               </div>
@@ -1004,7 +1017,7 @@ export default function RoomDetailPage({
 
             {/* Smoke Detector Safety Status Bar */}
             <div className={`p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs ${
-              !linkedHubId
+              !isHubOnline
                 ? 'bg-[#F9F9F7] border-[#E5E7EB] text-[#64748B]'
                 : currentRoom.smokeAlert || (currentRoom.smokeValue && currentRoom.smokeValue > 1800)
                 ? 'bg-[#FEE2E2] border-[#FECACA] text-[#DC2626] font-bold animate-pulse'
@@ -1012,7 +1025,7 @@ export default function RoomDetailPage({
             }`}>
               <div className="flex items-center gap-2">
                 <Flame className={`w-4 h-4 shrink-0 ${
-                  !linkedHubId
+                  !isHubOnline
                     ? 'text-slate-400'
                     : currentRoom.smokeAlert || (currentRoom.smokeValue && currentRoom.smokeValue > 1800)
                     ? 'text-[#DC2626]'
@@ -1021,6 +1034,8 @@ export default function RoomDetailPage({
                 <span>
                   {!linkedHubId
                     ? 'Smoke Detector: Sensor Offline (Controller Unlinked)'
+                    : !isHubOnline
+                    ? 'Smoke Detector: Offline (Waiting for hardware)'
                     : currentRoom.smokeAlert || (currentRoom.smokeValue && currentRoom.smokeValue > 1800)
                     ? 'Smoke Hazard Triggered: Local siren active!'
                     : 'Smoke Detector: Atmosphere Clear'}
@@ -1061,18 +1076,35 @@ export default function RoomDetailPage({
             {linkedHubId && !isEditingHub ? (
               <div className="mb-4 p-3.5 rounded-xl bg-[#0B1F3A] text-white border border-white/10 shadow-sm flex items-center justify-between">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0">
-                    <Wifi className="w-5 h-5 text-emerald-400 animate-pulse" />
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${
+                    isHubOnline
+                      ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                      : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                  }`}>
+                    {isHubOnline ? (
+                      <Wifi className="w-5 h-5 text-emerald-400 animate-pulse" />
+                    ) : (
+                      <WifiOff className="w-5 h-5 text-amber-300" />
+                    )}
                   </div>
                   <div className="truncate">
                     <div className="flex items-center gap-2">
                       <span className="font-headline font-bold text-sm text-white">Room Controller</span>
-                      <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-emerald-500/20 text-emerald-400 uppercase tracking-wider">
-                        Connected
+                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider ${
+                        isHubOnline
+                          ? 'bg-emerald-500/20 text-emerald-400'
+                          : 'bg-amber-500/20 text-amber-300'
+                      }`}>
+                        {isHubOnline ? 'Online' : 'Offline'}
                       </span>
                     </div>
                     <div className="text-xs font-mono text-emerald-300/90 tracking-wide mt-0.5 truncate">
                       {linkedHubId}
+                    </div>
+                    <div className="text-[10px] text-white/60 mt-0.5">
+                      {isHubOnline
+                        ? 'Hardware connected & transmitting live telemetry'
+                        : 'Controller ID linked • Waiting for physical device to connect'}
                     </div>
                   </div>
                 </div>
@@ -1285,8 +1317,8 @@ export default function RoomDetailPage({
 
                     <div className="flex items-center gap-2 shrink-0">
                       {(() => {
-                        const isDevOnline = Boolean(linkedHubId) && (dev.online === true || dev.online === 1)
-                        const isDevActive = Boolean(linkedHubId) && dev.isActive !== false && dev.is_active !== false
+                        const isDevOnline = Boolean(isHubOnline) && (dev.online === true || dev.online === 1)
+                        const isDevActive = Boolean(isHubOnline) && dev.isActive !== false && dev.is_active !== false
 
                         return (
                           <>
@@ -1308,6 +1340,10 @@ export default function RoomDetailPage({
                                   triggerToast('Device is not linked')
                                   return
                                 }
+                                if (!isHubOnline) {
+                                  triggerToast('Device is offline (Hardware not transmitting)')
+                                  return
+                                }
                                 handleDirectToggleDevice(dev)
                               }}
                               className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase transition-colors ${
@@ -1315,7 +1351,7 @@ export default function RoomDetailPage({
                                   ? 'bg-[#DCFCE7] text-[#15803D] cursor-pointer'
                                   : 'bg-slate-100 text-slate-500 border border-slate-200 cursor-not-allowed'
                               }`}
-                              title={!linkedHubId ? 'Device is not linked' : isDevActive ? 'Device active' : 'Device disabled'}
+                              title={!linkedHubId ? 'Device is not linked' : !isHubOnline ? 'Device is offline (Hardware not transmitting)' : isDevActive ? 'Device active' : 'Device disabled'}
                             >
                               {isDevActive ? 'Active' : 'Inactive'}
                             </button>

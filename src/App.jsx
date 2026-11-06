@@ -134,9 +134,15 @@ export default function App() {
       targetRoom.hubDeviceId !== 'undefined' &&
       String(targetRoom.hubDeviceId).trim()
     )
+    const isOnline = Boolean(isLinked && (targetRoom?.isOnline ?? targetRoom?.hubOnline))
 
     if (!isLinked) {
       showToast('Device is not linked')
+      return
+    }
+
+    if (!isOnline) {
+      showToast('Device is offline (Hardware not transmitting)')
       return
     }
 

@@ -32,6 +32,7 @@ export default function IoTRoomCard({
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef(null)
   const [unlinkedPopup, setUnlinkedPopup] = useState(false)
+  const [popupMessage, setPopupMessage] = useState('Device is not linked')
   const popupTimeoutRef = useRef(null)
 
   useEffect(() => {
@@ -40,17 +41,32 @@ export default function IoTRoomCard({
     }
   }, [])
 
-  const handleUnlinkedClick = (e) => {
-    e.stopPropagation()
+  const triggerNotice = (msg) => {
+    setPopupMessage(msg)
     setUnlinkedPopup(true)
     if (popupTimeoutRef.current) clearTimeout(popupTimeoutRef.current)
     popupTimeoutRef.current = setTimeout(() => {
       setUnlinkedPopup(false)
     }, 2500)
     if (onUnlinkedNotice) {
-      onUnlinkedNotice()
+      onUnlinkedNotice(msg)
     } else if (onToggleDevice) {
-      onToggleDevice(room.id, 'unlinked')
+      onToggleDevice(room.id, msg)
+    }
+  }
+
+  const handleDeviceAction = (e, deviceKey) => {
+    e.stopPropagation()
+    if (!isLinked) {
+      triggerNotice('Device is not linked')
+      return
+    }
+    if (!isOnline) {
+      triggerNotice('Device is offline (Hardware not transmitting)')
+      return
+    }
+    if (onToggleDevice) {
+      onToggleDevice(room.id, deviceKey)
     }
   }
 
@@ -131,9 +147,10 @@ export default function IoTRoomCard({
     room.hubDeviceId !== 'undefined' &&
     String(room.hubDeviceId).trim()
   )
+  const isOnline = Boolean(isLinked && (room.isOnline ?? room.hubOnline))
 
-  // Room devices state
-  const deviceState = isLinked && room.devices && typeof room.devices === 'object' && !Array.isArray(room.devices)
+  // Room devices state: only active when the controller is actually online & communicating
+  const deviceState = isOnline && room.devices && typeof room.devices === 'object' && !Array.isArray(room.devices)
     ? room.devices
     : {
         light: false,
@@ -159,13 +176,13 @@ export default function IoTRoomCard({
   const tierName = room.roomType?.name || room.tier || 'Deluxe Luxury Suite'
   const floorName = room.floor?.name || `Floor ${room.floor?.number || 1}`
   const guestDisplay = room.guest?.name || room.guest || (isOccupied ? 'Registered Guest' : 'Available for check-in')
-  const tempDisplay = isLinked && room.temp != null ? `${room.temp}` : '--'
-  const humidityDisplay = isLinked && room.humidity != null ? `${room.humidity}` : '--'
-  const iaqDisplay = isLinked ? (room.iaq || '98 (Excel)') : '--'
-  const pressureDisplay = isLinked && room.pressure != null ? `${room.pressure} hPa` : '--'
-  const energyDisplay = isLinked && room.energy24h != null ? room.energy24h : '--'
-  const powerDisplay = isLinked && room.power != null ? `${room.power}W` : '--'
-  const isSmokeActive = Boolean(isLinked && (room.smokeAlert || (room.smokeValue && room.smokeValue > 1800)))
+  const tempDisplay = isOnline && room.temp != null ? `${room.temp}` : '--'
+  const humidityDisplay = isOnline && room.humidity != null ? `${room.humidity}` : '--'
+  const iaqDisplay = isOnline && room.iaq != null ? `${room.iaq}` : '--'
+  const pressureDisplay = isOnline && room.pressure != null ? `${room.pressure} hPa` : '--'
+  const energyDisplay = isOnline && room.energy24h != null ? room.energy24h : '--'
+  const powerDisplay = isOnline && room.power != null ? `${room.power}W` : '--'
+  const isSmokeActive = Boolean(isOnline && (room.smokeAlert || (room.smokeValue && room.smokeValue > 1800)))
   const priceDisplay = room.basePrice != null ? room.basePrice : (room.price != null ? room.price : (room.base_price != null ? room.base_price : null))
 
   return (
@@ -373,27 +390,33 @@ export default function IoTRoomCard({
           <span className="font-bold text-[#64748B] uppercase tracking-wider flex items-center gap-1.5">
             <span
               className={`w-1.5 h-1.5 rounded-full ${
-                isLinked ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'
+                isOnline
+                  ? 'bg-emerald-500 animate-pulse'
+                  : isLinked
+                  ? 'bg-amber-500'
+                  : 'bg-slate-300'
               }`}
             />
             <span>Room Controller</span>
           </span>
           <span
             className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${
-              isLinked
+              isOnline
                 ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
+                : isLinked
+                ? 'text-amber-700 bg-amber-50 border-amber-200'
                 : 'text-slate-500 bg-slate-50 border-slate-200'
             }`}
           >
-            {isLinked ? 'ONLINE' : 'UNLINKED'}
+            {isOnline ? 'ONLINE' : isLinked ? 'OFFLINE' : 'UNLINKED'}
           </span>
         </div>
 
-        {/* Unlinked Device Warning Banner Popup */}
+        {/* Unlinked / Offline Warning Banner Popup */}
         {unlinkedPopup && (
           <div className="mb-2.5 p-2 rounded-xl bg-[#0B1F3A] text-amber-300 border border-amber-400/40 text-xs font-bold flex items-center justify-center gap-1.5 shadow-md animate-bounce">
             <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
-            <span>Device is not linked</span>
+            <span>{popupMessage}</span>
           </div>
         )}
 
@@ -402,17 +425,10 @@ export default function IoTRoomCard({
           {/* Light */}
           <button
             type="button"
-            onClick={(e) => {
-              if (!isLinked) {
-                handleUnlinkedClick(e)
-                return
-              }
-              e.stopPropagation()
-              if (onToggleDevice) onToggleDevice(room.id, 'light')
-            }}
-            title={!isLinked ? 'Device is not linked' : 'Toggle Light'}
+            onClick={(e) => handleDeviceAction(e, 'light')}
+            title={!isLinked ? 'Device is not linked' : !isOnline ? 'Device is offline (Hardware not transmitting)' : 'Toggle Light'}
             className={`py-2.5 px-2 rounded-xl flex flex-col items-center justify-between border transition-all duration-150 cursor-pointer ${
-              !isLinked
+              !isOnline
                 ? 'bg-[#F9F9F7] border-[#E5E7EB] hover:bg-amber-50 hover:border-amber-300 text-[#64748B]'
                 : deviceState.light
                 ? 'bg-[#FEF7DB] border-[#C9A227]/40 text-[#755B00] shadow-2xs active:scale-95'
@@ -421,7 +437,7 @@ export default function IoTRoomCard({
           >
             <Lightbulb
               className={`w-4 h-4 mb-1 transition-colors ${
-                !isLinked
+                !isOnline
                   ? 'text-[#94A3B8]'
                   : deviceState.light
                   ? 'text-[#C9A227] fill-[#C9A227]/30'
@@ -431,31 +447,24 @@ export default function IoTRoomCard({
             <span className="text-[11px] font-semibold block mb-1">Light</span>
             <span
               className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
-                !isLinked
+                !isOnline
                   ? 'bg-[#E2E8F0] text-[#64748B]'
                   : deviceState.light
                   ? 'bg-[#16A34A] text-white'
                   : 'bg-[#E2E8F0] text-[#64748B]'
               }`}
             >
-              {!isLinked ? 'OFF' : deviceState.light ? 'ON' : 'OFF'}
+              {!isOnline ? 'OFF' : deviceState.light ? 'ON' : 'OFF'}
             </span>
           </button>
 
           {/* Fridge */}
           <button
             type="button"
-            onClick={(e) => {
-              if (!isLinked) {
-                handleUnlinkedClick(e)
-                return
-              }
-              e.stopPropagation()
-              if (onToggleDevice) onToggleDevice(room.id, 'fridge')
-            }}
-            title={!isLinked ? 'Device is not linked' : 'Toggle Fridge'}
+            onClick={(e) => handleDeviceAction(e, 'fridge')}
+            title={!isLinked ? 'Device is not linked' : !isOnline ? 'Device is offline (Hardware not transmitting)' : 'Toggle Fridge'}
             className={`py-2.5 px-2 rounded-xl flex flex-col items-center justify-between border transition-all duration-150 cursor-pointer ${
-              !isLinked
+              !isOnline
                 ? 'bg-[#F9F9F7] border-[#E5E7EB] hover:bg-amber-50 hover:border-amber-300 text-[#64748B]'
                 : deviceState.fridge
                 ? 'bg-[#EFF6FF] border-[#93C5FD] text-[#1D4ED8] shadow-2xs active:scale-95'
@@ -464,7 +473,7 @@ export default function IoTRoomCard({
           >
             <Refrigerator
               className={`w-4 h-4 mb-1 transition-colors ${
-                !isLinked
+                !isOnline
                   ? 'text-[#94A3B8]'
                   : deviceState.fridge
                   ? 'text-[#2563EB]'
@@ -474,31 +483,24 @@ export default function IoTRoomCard({
             <span className="text-[11px] font-semibold block mb-1">Fridge</span>
             <span
               className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
-                !isLinked
+                !isOnline
                   ? 'bg-[#E2E8F0] text-[#64748B]'
                   : deviceState.fridge
                   ? 'bg-[#16A34A] text-white'
                   : 'bg-[#E2E8F0] text-[#64748B]'
               }`}
             >
-              {!isLinked ? 'OFF' : deviceState.fridge ? 'ON' : 'OFF'}
+              {!isOnline ? 'OFF' : deviceState.fridge ? 'ON' : 'OFF'}
             </span>
           </button>
 
           {/* AC */}
           <button
             type="button"
-            onClick={(e) => {
-              if (!isLinked) {
-                handleUnlinkedClick(e)
-                return
-              }
-              e.stopPropagation()
-              if (onToggleDevice) onToggleDevice(room.id, 'ac')
-            }}
-            title={!isLinked ? 'Device is not linked' : 'Toggle AC'}
+            onClick={(e) => handleDeviceAction(e, 'ac')}
+            title={!isLinked ? 'Device is not linked' : !isOnline ? 'Device is offline (Hardware not transmitting)' : 'Toggle AC'}
             className={`py-2.5 px-2 rounded-xl flex flex-col items-center justify-between border transition-all duration-150 cursor-pointer ${
-              !isLinked
+              !isOnline
                 ? 'bg-[#F9F9F7] border-[#E5E7EB] hover:bg-amber-50 hover:border-amber-300 text-[#64748B]'
                 : deviceState.ac
                 ? 'bg-[#ECFDF5] border-[#A7F3D0] text-[#059669] shadow-2xs active:scale-95'
@@ -507,7 +509,7 @@ export default function IoTRoomCard({
           >
             <Snowflake
               className={`w-4 h-4 mb-1 transition-colors ${
-                !isLinked
+                !isOnline
                   ? 'text-[#94A3B8]'
                   : deviceState.ac
                   ? 'text-[#059669]'
@@ -517,31 +519,24 @@ export default function IoTRoomCard({
             <span className="text-[11px] font-semibold block mb-1">AC</span>
             <span
               className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
-                !isLinked
+                !isOnline
                   ? 'bg-[#E2E8F0] text-[#64748B]'
                   : deviceState.ac
                   ? 'bg-[#16A34A] text-white'
                   : 'bg-[#E2E8F0] text-[#64748B]'
               }`}
             >
-              {!isLinked ? 'OFF' : deviceState.ac ? 'ON' : 'OFF'}
+              {!isOnline ? 'OFF' : deviceState.ac ? 'ON' : 'OFF'}
             </span>
           </button>
 
           {/* TV */}
           <button
             type="button"
-            onClick={(e) => {
-              if (!isLinked) {
-                handleUnlinkedClick(e)
-                return
-              }
-              e.stopPropagation()
-              if (onToggleDevice) onToggleDevice(room.id, 'tv')
-            }}
-            title={!isLinked ? 'Device is not linked' : 'Toggle TV'}
+            onClick={(e) => handleDeviceAction(e, 'tv')}
+            title={!isLinked ? 'Device is not linked' : !isOnline ? 'Device is offline (Hardware not transmitting)' : 'Toggle TV'}
             className={`py-2.5 px-2 rounded-xl flex flex-col items-center justify-between border transition-all duration-150 cursor-pointer ${
-              !isLinked
+              !isOnline
                 ? 'bg-[#F9F9F7] border-[#E5E7EB] hover:bg-amber-50 hover:border-amber-300 text-[#64748B]'
                 : deviceState.tv
                 ? 'bg-[#F5F3FF] border-[#DDD6FE] text-[#7C3AED] shadow-2xs active:scale-95'
@@ -550,7 +545,7 @@ export default function IoTRoomCard({
           >
             <Tv
               className={`w-4 h-4 mb-1 transition-colors ${
-                !isLinked
+                !isOnline
                   ? 'text-[#94A3B8]'
                   : deviceState.tv
                   ? 'text-[#7C3AED]'
@@ -560,14 +555,14 @@ export default function IoTRoomCard({
             <span className="text-[11px] font-semibold block mb-1">TV</span>
             <span
               className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
-                !isLinked
+                !isOnline
                   ? 'bg-[#E2E8F0] text-[#64748B]'
                   : deviceState.tv
                   ? 'bg-[#16A34A] text-white'
                   : 'bg-[#E2E8F0] text-[#64748B]'
               }`}
             >
-              {!isLinked ? 'OFF' : deviceState.tv ? 'ON' : 'OFF'}
+              {!isOnline ? 'OFF' : deviceState.tv ? 'ON' : 'OFF'}
             </span>
           </button>
         </div>
