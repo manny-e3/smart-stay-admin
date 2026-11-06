@@ -27,9 +27,32 @@ export default function IoTRoomCard({
   onToggleDevice,
   onEditRoom,
   onDeleteRoom,
+  onUnlinkedNotice,
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef(null)
+  const [unlinkedPopup, setUnlinkedPopup] = useState(false)
+  const popupTimeoutRef = useRef(null)
+
+  useEffect(() => {
+    return () => {
+      if (popupTimeoutRef.current) clearTimeout(popupTimeoutRef.current)
+    }
+  }, [])
+
+  const handleUnlinkedClick = (e) => {
+    e.stopPropagation()
+    setUnlinkedPopup(true)
+    if (popupTimeoutRef.current) clearTimeout(popupTimeoutRef.current)
+    popupTimeoutRef.current = setTimeout(() => {
+      setUnlinkedPopup(false)
+    }, 2500)
+    if (onUnlinkedNotice) {
+      onUnlinkedNotice()
+    } else if (onToggleDevice) {
+      onToggleDevice(room.id, 'unlinked')
+    }
+  }
 
   useEffect(() => {
     const handleOutsideClick = (e) => {
@@ -102,13 +125,20 @@ export default function IoTRoomCard({
     )
   }
 
+  const isLinked = Boolean(
+    room.hubDeviceId &&
+    room.hubDeviceId !== 'null' &&
+    room.hubDeviceId !== 'undefined' &&
+    String(room.hubDeviceId).trim()
+  )
+
   // Room devices state
-  const deviceState = room.devices && typeof room.devices === 'object' && !Array.isArray(room.devices)
+  const deviceState = isLinked && room.devices && typeof room.devices === 'object' && !Array.isArray(room.devices)
     ? room.devices
     : {
-        light: true,
-        fridge: true,
-        ac: isOccupied,
+        light: false,
+        fridge: false,
+        ac: false,
         tv: false,
       }
 
@@ -129,13 +159,13 @@ export default function IoTRoomCard({
   const tierName = room.roomType?.name || room.tier || 'Deluxe Luxury Suite'
   const floorName = room.floor?.name || `Floor ${room.floor?.number || 1}`
   const guestDisplay = room.guest?.name || room.guest || (isOccupied ? 'Registered Guest' : 'Available for check-in')
-  const tempDisplay = room.temp || (21 + (Number(room.id) % 4))
-  const humidityDisplay = room.humidity || (42 + (Number(room.id) % 8))
-  const iaqDisplay = room.iaq || '98 (Excel)'
-  const pressureDisplay = room.pressure != null ? `${room.pressure} hPa` : '1013 hPa'
-  const energyDisplay = room.energy24h || Number((9.2 + (Number(room.id) % 5) * 1.3).toFixed(1))
-  const powerDisplay = room.power != null ? `${room.power}W` : `${Math.round(Number(energyDisplay) * 28.5)}W`
-  const isSmokeActive = Boolean(room.smokeAlert || (room.smokeValue && room.smokeValue > 1800))
+  const tempDisplay = isLinked && room.temp != null ? `${room.temp}` : '--'
+  const humidityDisplay = isLinked && room.humidity != null ? `${room.humidity}` : '--'
+  const iaqDisplay = isLinked ? (room.iaq || '98 (Excel)') : '--'
+  const pressureDisplay = isLinked && room.pressure != null ? `${room.pressure} hPa` : '--'
+  const energyDisplay = isLinked && room.energy24h != null ? room.energy24h : '--'
+  const powerDisplay = isLinked && room.power != null ? `${room.power}W` : '--'
+  const isSmokeActive = Boolean(isLinked && (room.smokeAlert || (room.smokeValue && room.smokeValue > 1800)))
   const priceDisplay = room.basePrice != null ? room.basePrice : (room.price != null ? room.price : (room.base_price != null ? room.base_price : null))
 
   return (
@@ -284,7 +314,7 @@ export default function IoTRoomCard({
             </div>
             <div className="min-w-0">
               <div className="font-bold text-xs text-[#0B1F3A] leading-tight truncate">
-                {tempDisplay}°C
+                {tempDisplay === '--' ? '--' : `${tempDisplay}°C`}
               </div>
               <div className="text-[9px] text-[#64748B] mt-0.5 leading-none font-medium truncate">
                 Temp
@@ -299,7 +329,7 @@ export default function IoTRoomCard({
             </div>
             <div className="min-w-0">
               <div className="font-bold text-xs text-[#0B1F3A] leading-tight truncate">
-                {humidityDisplay}%
+                {humidityDisplay === '--' ? '--' : `${humidityDisplay}%`}
               </div>
               <div className="text-[9px] text-[#64748B] mt-0.5 leading-none font-medium truncate">
                 Humidity
@@ -343,21 +373,29 @@ export default function IoTRoomCard({
           <span className="font-bold text-[#64748B] uppercase tracking-wider flex items-center gap-1.5">
             <span
               className={`w-1.5 h-1.5 rounded-full ${
-                room.hubDeviceId ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'
+                isLinked ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'
               }`}
             />
             <span>Room Controller</span>
           </span>
           <span
             className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${
-              room.hubDeviceId
+              isLinked
                 ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
                 : 'text-slate-500 bg-slate-50 border-slate-200'
             }`}
           >
-            {room.hubDeviceId ? 'ONLINE' : 'UNLINKED'}
+            {isLinked ? 'ONLINE' : 'UNLINKED'}
           </span>
         </div>
+
+        {/* Unlinked Device Warning Banner Popup */}
+        {unlinkedPopup && (
+          <div className="mb-2.5 p-2 rounded-xl bg-[#0B1F3A] text-amber-300 border border-amber-400/40 text-xs font-bold flex items-center justify-center gap-1.5 shadow-md animate-bounce">
+            <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+            <span>Device is not linked</span>
+          </div>
+        )}
 
         {/* Smart Device Controls Row (Light, Fridge, AC, TV) */}
         <div className="grid grid-cols-4 gap-2.5 text-center">
@@ -365,18 +403,27 @@ export default function IoTRoomCard({
           <button
             type="button"
             onClick={(e) => {
+              if (!isLinked) {
+                handleUnlinkedClick(e)
+                return
+              }
               e.stopPropagation()
               if (onToggleDevice) onToggleDevice(room.id, 'light')
             }}
-            className={`py-2.5 px-2 rounded-xl flex flex-col items-center justify-between border transition-all duration-150 cursor-pointer active:scale-95 ${
-              deviceState.light
-                ? 'bg-[#FEF7DB] border-[#C9A227]/40 text-[#755B00] shadow-2xs'
-                : 'bg-[#F9F9F7] border-[#E5E7EB] hover:bg-[#F4F4F2] text-[#64748B]'
+            title={!isLinked ? 'Device is not linked' : 'Toggle Light'}
+            className={`py-2.5 px-2 rounded-xl flex flex-col items-center justify-between border transition-all duration-150 cursor-pointer ${
+              !isLinked
+                ? 'bg-[#F9F9F7] border-[#E5E7EB] hover:bg-amber-50 hover:border-amber-300 text-[#64748B]'
+                : deviceState.light
+                ? 'bg-[#FEF7DB] border-[#C9A227]/40 text-[#755B00] shadow-2xs active:scale-95'
+                : 'bg-[#F9F9F7] border-[#E5E7EB] hover:bg-[#F4F4F2] text-[#64748B] active:scale-95'
             }`}
           >
             <Lightbulb
               className={`w-4 h-4 mb-1 transition-colors ${
-                deviceState.light
+                !isLinked
+                  ? 'text-[#94A3B8]'
+                  : deviceState.light
                   ? 'text-[#C9A227] fill-[#C9A227]/30'
                   : 'text-[#94A3B8]'
               }`}
@@ -384,12 +431,14 @@ export default function IoTRoomCard({
             <span className="text-[11px] font-semibold block mb-1">Light</span>
             <span
               className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
-                deviceState.light
+                !isLinked
+                  ? 'bg-[#E2E8F0] text-[#64748B]'
+                  : deviceState.light
                   ? 'bg-[#16A34A] text-white'
                   : 'bg-[#E2E8F0] text-[#64748B]'
               }`}
             >
-              {deviceState.light ? 'ON' : 'OFF'}
+              {!isLinked ? 'OFF' : deviceState.light ? 'ON' : 'OFF'}
             </span>
           </button>
 
@@ -397,29 +446,42 @@ export default function IoTRoomCard({
           <button
             type="button"
             onClick={(e) => {
+              if (!isLinked) {
+                handleUnlinkedClick(e)
+                return
+              }
               e.stopPropagation()
               if (onToggleDevice) onToggleDevice(room.id, 'fridge')
             }}
-            className={`py-2.5 px-2 rounded-xl flex flex-col items-center justify-between border transition-all duration-150 cursor-pointer active:scale-95 ${
-              deviceState.fridge
-                ? 'bg-[#EFF6FF] border-[#93C5FD] text-[#1D4ED8] shadow-2xs'
-                : 'bg-[#F9F9F7] border-[#E5E7EB] hover:bg-[#F4F4F2] text-[#64748B]'
+            title={!isLinked ? 'Device is not linked' : 'Toggle Fridge'}
+            className={`py-2.5 px-2 rounded-xl flex flex-col items-center justify-between border transition-all duration-150 cursor-pointer ${
+              !isLinked
+                ? 'bg-[#F9F9F7] border-[#E5E7EB] hover:bg-amber-50 hover:border-amber-300 text-[#64748B]'
+                : deviceState.fridge
+                ? 'bg-[#EFF6FF] border-[#93C5FD] text-[#1D4ED8] shadow-2xs active:scale-95'
+                : 'bg-[#F9F9F7] border-[#E5E7EB] hover:bg-[#F4F4F2] text-[#64748B] active:scale-95'
             }`}
           >
             <Refrigerator
               className={`w-4 h-4 mb-1 transition-colors ${
-                deviceState.fridge ? 'text-[#2563EB]' : 'text-[#94A3B8]'
+                !isLinked
+                  ? 'text-[#94A3B8]'
+                  : deviceState.fridge
+                  ? 'text-[#2563EB]'
+                  : 'text-[#94A3B8]'
               }`}
             />
             <span className="text-[11px] font-semibold block mb-1">Fridge</span>
             <span
               className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
-                deviceState.fridge
+                !isLinked
+                  ? 'bg-[#E2E8F0] text-[#64748B]'
+                  : deviceState.fridge
                   ? 'bg-[#16A34A] text-white'
                   : 'bg-[#E2E8F0] text-[#64748B]'
               }`}
             >
-              {deviceState.fridge ? 'ON' : 'OFF'}
+              {!isLinked ? 'OFF' : deviceState.fridge ? 'ON' : 'OFF'}
             </span>
           </button>
 
@@ -427,29 +489,42 @@ export default function IoTRoomCard({
           <button
             type="button"
             onClick={(e) => {
+              if (!isLinked) {
+                handleUnlinkedClick(e)
+                return
+              }
               e.stopPropagation()
               if (onToggleDevice) onToggleDevice(room.id, 'ac')
             }}
-            className={`py-2.5 px-2 rounded-xl flex flex-col items-center justify-between border transition-all duration-150 cursor-pointer active:scale-95 ${
-              deviceState.ac
-                ? 'bg-[#ECFDF5] border-[#A7F3D0] text-[#059669] shadow-2xs'
-                : 'bg-[#F9F9F7] border-[#E5E7EB] hover:bg-[#F4F4F2] text-[#64748B]'
+            title={!isLinked ? 'Device is not linked' : 'Toggle AC'}
+            className={`py-2.5 px-2 rounded-xl flex flex-col items-center justify-between border transition-all duration-150 cursor-pointer ${
+              !isLinked
+                ? 'bg-[#F9F9F7] border-[#E5E7EB] hover:bg-amber-50 hover:border-amber-300 text-[#64748B]'
+                : deviceState.ac
+                ? 'bg-[#ECFDF5] border-[#A7F3D0] text-[#059669] shadow-2xs active:scale-95'
+                : 'bg-[#F9F9F7] border-[#E5E7EB] hover:bg-[#F4F4F2] text-[#64748B] active:scale-95'
             }`}
           >
             <Snowflake
               className={`w-4 h-4 mb-1 transition-colors ${
-                deviceState.ac ? 'text-[#059669]' : 'text-[#94A3B8]'
+                !isLinked
+                  ? 'text-[#94A3B8]'
+                  : deviceState.ac
+                  ? 'text-[#059669]'
+                  : 'text-[#94A3B8]'
               }`}
             />
             <span className="text-[11px] font-semibold block mb-1">AC</span>
             <span
               className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
-                deviceState.ac
+                !isLinked
+                  ? 'bg-[#E2E8F0] text-[#64748B]'
+                  : deviceState.ac
                   ? 'bg-[#16A34A] text-white'
                   : 'bg-[#E2E8F0] text-[#64748B]'
               }`}
             >
-              {deviceState.ac ? 'ON' : 'OFF'}
+              {!isLinked ? 'OFF' : deviceState.ac ? 'ON' : 'OFF'}
             </span>
           </button>
 
@@ -457,29 +532,42 @@ export default function IoTRoomCard({
           <button
             type="button"
             onClick={(e) => {
+              if (!isLinked) {
+                handleUnlinkedClick(e)
+                return
+              }
               e.stopPropagation()
               if (onToggleDevice) onToggleDevice(room.id, 'tv')
             }}
-            className={`py-2.5 px-2 rounded-xl flex flex-col items-center justify-between border transition-all duration-150 cursor-pointer active:scale-95 ${
-              deviceState.tv
-                ? 'bg-[#F5F3FF] border-[#DDD6FE] text-[#7C3AED] shadow-2xs'
-                : 'bg-[#F9F9F7] border-[#E5E7EB] hover:bg-[#F4F4F2] text-[#64748B]'
+            title={!isLinked ? 'Device is not linked' : 'Toggle TV'}
+            className={`py-2.5 px-2 rounded-xl flex flex-col items-center justify-between border transition-all duration-150 cursor-pointer ${
+              !isLinked
+                ? 'bg-[#F9F9F7] border-[#E5E7EB] hover:bg-amber-50 hover:border-amber-300 text-[#64748B]'
+                : deviceState.tv
+                ? 'bg-[#F5F3FF] border-[#DDD6FE] text-[#7C3AED] shadow-2xs active:scale-95'
+                : 'bg-[#F9F9F7] border-[#E5E7EB] hover:bg-[#F4F4F2] text-[#64748B] active:scale-95'
             }`}
           >
             <Tv
               className={`w-4 h-4 mb-1 transition-colors ${
-                deviceState.tv ? 'text-[#7C3AED]' : 'text-[#94A3B8]'
+                !isLinked
+                  ? 'text-[#94A3B8]'
+                  : deviceState.tv
+                  ? 'text-[#7C3AED]'
+                  : 'text-[#94A3B8]'
               }`}
             />
             <span className="text-[11px] font-semibold block mb-1">TV</span>
             <span
               className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
-                deviceState.tv
+                !isLinked
+                  ? 'bg-[#E2E8F0] text-[#64748B]'
+                  : deviceState.tv
                   ? 'bg-[#16A34A] text-white'
                   : 'bg-[#E2E8F0] text-[#64748B]'
               }`}
             >
-              {deviceState.tv ? 'ON' : 'OFF'}
+              {!isLinked ? 'OFF' : deviceState.tv ? 'ON' : 'OFF'}
             </span>
           </button>
         </div>
@@ -495,11 +583,13 @@ export default function IoTRoomCard({
           </div>
           <div className="flex items-baseline gap-1.5 flex-wrap">
             <span className="font-bold text-xs sm:text-sm text-[#0B1F3A]">
-              {energyDisplay} kWh
+              {isLinked ? `${energyDisplay} kWh` : '-- kWh'}
             </span>
             <span className="text-[11px] text-[#64748B]">24h</span>
-            <span className="text-[10px] font-bold text-[#16A34A] bg-[#DCFCE7] px-1.5 py-0.2 rounded">
-              {powerDisplay}
+            <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
+              isLinked ? 'text-[#16A34A] bg-[#DCFCE7]' : 'text-slate-500 bg-slate-100'
+            }`}>
+              {isLinked ? powerDisplay : '-- W'}
             </span>
           </div>
         </div>

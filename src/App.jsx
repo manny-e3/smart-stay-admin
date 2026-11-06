@@ -128,6 +128,18 @@ export default function App() {
   // Toggle smart device on room card or detail view
   const handleToggleDevice = (roomId, deviceKey) => {
     const targetRoom = rooms.find((r) => r.id === roomId)
+    const isLinked = Boolean(
+      targetRoom?.hubDeviceId &&
+      targetRoom.hubDeviceId !== 'null' &&
+      targetRoom.hubDeviceId !== 'undefined' &&
+      String(targetRoom.hubDeviceId).trim()
+    )
+
+    if (!isLinked) {
+      showToast('Device is not linked')
+      return
+    }
+
     const currentDevices =
       targetRoom?.devices && typeof targetRoom.devices === 'object' && !Array.isArray(targetRoom.devices)
         ? targetRoom.devices

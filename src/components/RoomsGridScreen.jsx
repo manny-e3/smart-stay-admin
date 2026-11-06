@@ -370,6 +370,7 @@ export default function RoomsGridScreen({
             onToggleDevice={onToggleDevice}
             onEditRoom={(r) => setRoomToEdit(r)}
             onDeleteRoom={(r) => setRoomToDelete(r)}
+            onUnlinkedNotice={() => triggerToast('Device is not linked')}
           />
         ))}
       </div>

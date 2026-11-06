@@ -576,9 +576,15 @@ export default function RoomDetailPage({
                 </p>
               </div>
 
-              <span className="shrink-0 text-xs font-bold px-2.5 py-1 rounded-full bg-[#ECFDF5] text-[#059669] flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
-                <span>Adapter Online</span>
+              <span className={`shrink-0 text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 ${
+                linkedHubId
+                  ? 'bg-[#ECFDF5] text-[#059669]'
+                  : 'bg-slate-100 text-slate-500 border border-slate-200'
+              }`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${
+                  linkedHubId ? 'bg-[#10B981] animate-pulse' : 'bg-slate-400'
+                }`} />
+                <span>{linkedHubId ? 'Adapter Online' : 'Adapter Offline'}</span>
               </span>
             </div>
 
@@ -592,7 +598,7 @@ export default function RoomDetailPage({
                   {targetTemp}°C
                 </div>
                 <div className="text-[11px] text-[#64748B] mt-1">
-                  Ambient: {currentRoom.temp !== undefined && currentRoom.temp !== null ? `${Number(currentRoom.temp).toFixed(1)}°C` : '22.4°C'}
+                  Ambient: {linkedHubId && currentRoom.temp !== undefined && currentRoom.temp !== null ? `${Number(currentRoom.temp).toFixed(1)}°C` : '--'}
                 </div>
 
                 <div className="flex items-center gap-3 mt-4">
@@ -629,7 +635,7 @@ export default function RoomDetailPage({
                     <span className="text-xs font-bold text-[#0B1F3A] truncate">Relative Humidity</span>
                   </div>
                   <span className="text-sm font-bold text-[#0B1F3A] shrink-0 pl-2">
-                    {currentRoom.humidity !== undefined && currentRoom.humidity !== null ? `${Number(currentRoom.humidity).toFixed(0)}%` : '46%'}
+                    {linkedHubId && currentRoom.humidity !== undefined && currentRoom.humidity !== null ? `${Number(currentRoom.humidity).toFixed(0)}%` : '--'}
                   </span>
                 </div>
 
@@ -641,11 +647,13 @@ export default function RoomDetailPage({
                     <span className="text-xs font-bold text-[#0B1F3A] truncate">Indoor Air Quality</span>
                   </div>
                   <span className={`text-xs font-bold px-2 py-0.5 rounded-full shrink-0 ${
-                    String(currentRoom.iaq || '').toLowerCase().includes('poor')
+                    !linkedHubId
+                      ? 'bg-slate-100 text-slate-500 border border-slate-200'
+                      : String(currentRoom.iaq || '').toLowerCase().includes('poor')
                       ? 'bg-[#FEE2E2] text-[#DC2626]'
                       : 'bg-[#DCFCE7] text-[#15803D]'
                   }`}>
-                    {currentRoom.iaq || 'EXCELLENT'}
+                    {linkedHubId ? (currentRoom.iaq || 'EXCELLENT') : 'OFFLINE'}
                   </span>
                 </div>
 
@@ -657,7 +665,7 @@ export default function RoomDetailPage({
                     <span className="text-xs font-bold text-[#0B1F3A] truncate">Barometric Pressure</span>
                   </div>
                   <span className="text-sm font-bold text-[#0B1F3A] shrink-0 pl-2">
-                    {currentRoom.pressure ? `${Number(currentRoom.pressure).toFixed(1)} hPa` : '1013.2 hPa'}
+                    {linkedHubId && currentRoom.pressure ? `${Number(currentRoom.pressure).toFixed(1)} hPa` : '--'}
                   </span>
                 </div>
               </div>
@@ -674,6 +682,10 @@ export default function RoomDetailPage({
                     <button
                       key={m}
                       onClick={() => {
+                        if (!linkedHubId) {
+                          triggerToast('Device is not linked')
+                          return
+                        }
                         setHvacMode(m)
                         triggerToast(`HVAC Mode set to ${m.toUpperCase()}`)
                       }}
@@ -698,6 +710,10 @@ export default function RoomDetailPage({
                     <button
                       key={f}
                       onClick={() => {
+                        if (!linkedHubId) {
+                          triggerToast('Device is not linked')
+                          return
+                        }
                         setFanSpeed(f)
                         triggerToast(`Airflow set to ${f.toUpperCase()}`)
                       }}
@@ -845,7 +861,13 @@ export default function RoomDetailPage({
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <button
-                onClick={() => setLightingScene('relaxation')}
+                onClick={() => {
+                  if (!linkedHubId) {
+                    triggerToast('Device is not linked')
+                    return
+                  }
+                  setLightingScene('relaxation')
+                }}
                 className="p-3 rounded-xl border border-[#E5E7EB] bg-[#F9F9F7] hover:bg-[#F4F4F2] text-left transition-colors cursor-pointer"
               >
                 <Sun className="w-4 h-4 text-[#F59E0B] mb-1" />
@@ -854,7 +876,13 @@ export default function RoomDetailPage({
               </button>
 
               <button
-                onClick={() => setLightingScene('turndown')}
+                onClick={() => {
+                  if (!linkedHubId) {
+                    triggerToast('Device is not linked')
+                    return
+                  }
+                  setLightingScene('turndown')
+                }}
                 className="p-3 rounded-xl border border-[#E5E7EB] bg-[#F9F9F7] hover:bg-[#F4F4F2] text-left transition-colors cursor-pointer"
               >
                 <Moon className="w-4 h-4 text-[#818CF8] mb-1" />
@@ -863,7 +891,13 @@ export default function RoomDetailPage({
               </button>
 
               <button
-                onClick={() => setLightingScene('full')}
+                onClick={() => {
+                  if (!linkedHubId) {
+                    triggerToast('Device is not linked')
+                    return
+                  }
+                  setLightingScene('full')
+                }}
                 className="p-3 rounded-xl border border-[#E5E7EB] bg-[#F9F9F7] hover:bg-[#F4F4F2] text-left transition-colors cursor-pointer"
               >
                 <Sparkles className="w-4 h-4 text-[#C9A227] mb-1" />
@@ -872,7 +906,13 @@ export default function RoomDetailPage({
               </button>
 
               <button
-                onClick={() => setLightingScene('off')}
+                onClick={() => {
+                  if (!linkedHubId) {
+                    triggerToast('Device is not linked')
+                    return
+                  }
+                  setLightingScene('off')
+                }}
                 className="p-3 rounded-xl border border-[#E5E7EB] bg-[#F9F9F7] hover:bg-[#F4F4F2] text-left transition-colors cursor-pointer"
               >
                 <Power className="w-4 h-4 text-[#EF4444] mb-1" />
@@ -894,9 +934,15 @@ export default function RoomDetailPage({
                 </h3>
               </div>
 
-              <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-[#ECFDF5] text-[#059669] flex items-center gap-1.5 shrink-0">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
-                <span>Smart Meter</span>
+              <span className={`text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 shrink-0 ${
+                linkedHubId
+                  ? 'bg-[#ECFDF5] text-[#059669]'
+                  : 'bg-slate-100 text-slate-500 border border-slate-200'
+              }`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${
+                  linkedHubId ? 'bg-[#10B981] animate-pulse' : 'bg-slate-400'
+                }`} />
+                <span>{linkedHubId ? 'Smart Meter' : 'Smart Meter (Offline)'}</span>
               </span>
             </div>
 
@@ -910,7 +956,7 @@ export default function RoomDetailPage({
                   <Zap className="w-3.5 h-3.5 text-[#F59E0B]" />
                 </div>
                 <div className="text-base font-bold text-[#0B1F3A]">
-                  {currentRoom.power != null ? `${Number(currentRoom.power).toFixed(1)} W` : '142.5 W'}
+                  {linkedHubId && currentRoom.power != null ? `${Number(currentRoom.power).toFixed(1)} W` : '-- W'}
                 </div>
                 <div className="text-[10px] text-[#64748B] mt-0.5">Real-time load</div>
               </div>
@@ -923,7 +969,7 @@ export default function RoomDetailPage({
                   <Activity className="w-3.5 h-3.5 text-[#2563EB]" />
                 </div>
                 <div className="text-base font-bold text-[#0B1F3A]">
-                  {currentRoom.energy24h != null ? `${Number(currentRoom.energy24h).toFixed(2)} kWh` : '3.42 kWh'}
+                  {linkedHubId && currentRoom.energy24h != null ? `${Number(currentRoom.energy24h).toFixed(2)} kWh` : '-- kWh'}
                 </div>
                 <div className="text-[10px] text-[#64748B] mt-0.5">Cumulative kWh</div>
               </div>
@@ -936,7 +982,7 @@ export default function RoomDetailPage({
                   <Cpu className="w-3.5 h-3.5 text-[#7C3AED]" />
                 </div>
                 <div className="text-base font-bold text-[#0B1F3A]">
-                  {currentRoom.voltage != null ? `${Number(currentRoom.voltage).toFixed(1)} V` : '228.4 V'}
+                  {linkedHubId && currentRoom.voltage != null ? `${Number(currentRoom.voltage).toFixed(1)} V` : '-- V'}
                 </div>
                 <div className="text-[10px] text-[#64748B] mt-0.5">Grid potential</div>
               </div>
@@ -949,7 +995,7 @@ export default function RoomDetailPage({
                   <Gauge className="w-3.5 h-3.5 text-[#0D9488]" />
                 </div>
                 <div className="text-base font-bold text-[#0B1F3A]">
-                  {currentRoom.current != null ? `${Number(currentRoom.current).toFixed(2)} A` : '0.62 A'}
+                  {linkedHubId && currentRoom.current != null ? `${Number(currentRoom.current).toFixed(2)} A` : '-- A'}
                 </div>
                 <div className="text-[10px] text-[#64748B] mt-0.5">Phase draw</div>
               </div>
@@ -957,24 +1003,30 @@ export default function RoomDetailPage({
 
             {/* Smoke Detector Safety Status Bar */}
             <div className={`p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs ${
-              currentRoom.smokeAlert || (currentRoom.smokeValue && currentRoom.smokeValue > 1800)
+              !linkedHubId
+                ? 'bg-[#F9F9F7] border-[#E5E7EB] text-[#64748B]'
+                : currentRoom.smokeAlert || (currentRoom.smokeValue && currentRoom.smokeValue > 1800)
                 ? 'bg-[#FEE2E2] border-[#FECACA] text-[#DC2626] font-bold animate-pulse'
                 : 'bg-[#F9F9F7] border-[#E5E7EB] text-[#0B1F3A]'
             }`}>
               <div className="flex items-center gap-2">
                 <Flame className={`w-4 h-4 shrink-0 ${
-                  currentRoom.smokeAlert || (currentRoom.smokeValue && currentRoom.smokeValue > 1800)
+                  !linkedHubId
+                    ? 'text-slate-400'
+                    : currentRoom.smokeAlert || (currentRoom.smokeValue && currentRoom.smokeValue > 1800)
                     ? 'text-[#DC2626]'
                     : 'text-[#059669]'
                 }`} />
                 <span>
-                  {currentRoom.smokeAlert || (currentRoom.smokeValue && currentRoom.smokeValue > 1800)
+                  {!linkedHubId
+                    ? 'Smoke Detector: Sensor Offline (Controller Unlinked)'
+                    : currentRoom.smokeAlert || (currentRoom.smokeValue && currentRoom.smokeValue > 1800)
                     ? 'Smoke Hazard Triggered: Local siren active!'
                     : 'Smoke Detector: Atmosphere Clear'}
                 </span>
               </div>
               <span className="font-mono text-[11px] text-[#64748B] shrink-0">
-                Level: {currentRoom.smokeValue != null ? `${currentRoom.smokeValue} ADC` : '412 ADC'} (Threshold: 1800)
+                Level: {linkedHubId && currentRoom.smokeValue != null ? `${currentRoom.smokeValue} ADC` : '-- ADC'} (Threshold: 1800) (Threshold: 1800)
               </span>
             </div>
           </div>
@@ -1045,7 +1097,10 @@ export default function RoomDetailPage({
                           await deviceService.assignEsp32Hub(num, '')
                           triggerToast('Room Controller unlinked')
                           const refreshed = await roomsService.getRoomDetail(currentRoom.id || roomId)
-                          if (refreshed) setRoomDetail(refreshed)
+                          if (refreshed) {
+                            setRoomDetail(refreshed)
+                            if (onUpdateRoom) onUpdateRoom(refreshed)
+                          }
                         } catch (e) {
                           triggerToast('Unlink error')
                         }
@@ -1096,7 +1151,10 @@ export default function RoomDetailPage({
                       setIsEditingHub(false)
                       setHubInput('')
                       const refreshed = await roomsService.getRoomDetail(currentRoom.id || roomId)
-                      if (refreshed) setRoomDetail(refreshed)
+                      if (refreshed) {
+                        setRoomDetail(refreshed)
+                        if (onUpdateRoom) onUpdateRoom(refreshed)
+                      }
                     } catch (err) {
                       triggerToast('Failed to save Controller Device ID')
                     } finally {
@@ -1223,29 +1281,44 @@ export default function RoomDetailPage({
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
-                      <span
-                        className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
-                          dev.online !== false
-                            ? 'bg-[#DCFCE7] text-[#15803D]'
-                            : 'bg-[#FEE2E2] text-[#DC2626]'
-                        }`}
-                      >
-                        {dev.online !== false ? 'ONLINE' : 'OFFLINE'}
-                      </span>
+                      {(() => {
+                        const isDevOnline = Boolean(linkedHubId) && (dev.online === true || dev.online === 1)
+                        const isDevActive = Boolean(linkedHubId) && dev.isActive !== false && dev.is_active !== false
 
-                      {/* Active Toggle */}
-                      <button
-                        type="button"
-                        onClick={() => handleDirectToggleDevice(dev)}
-                        className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase transition-colors cursor-pointer ${
-                          dev.isActive !== false && dev.is_active !== false
-                            ? 'bg-[#DCFCE7] text-[#15803D]'
-                            : 'bg-gray-100 text-gray-500 line-through'
-                        }`}
-                        title={dev.isActive !== false && dev.is_active !== false ? 'Device active' : 'Device disabled'}
-                      >
-                        {dev.isActive !== false && dev.is_active !== false ? 'Active' : 'Muted'}
-                      </button>
+                        return (
+                          <>
+                            <span
+                              className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${
+                                isDevOnline
+                                  ? 'bg-[#DCFCE7] text-[#15803D] border-emerald-200'
+                                  : 'bg-slate-100 text-slate-500 border-slate-200'
+                              }`}
+                            >
+                              {isDevOnline ? 'ONLINE' : 'OFFLINE'}
+                            </span>
+
+                            {/* Active Toggle */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (!linkedHubId) {
+                                  triggerToast('Device is not linked')
+                                  return
+                                }
+                                handleDirectToggleDevice(dev)
+                              }}
+                              className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase transition-colors ${
+                                isDevActive
+                                  ? 'bg-[#DCFCE7] text-[#15803D] cursor-pointer'
+                                  : 'bg-slate-100 text-slate-500 border border-slate-200 cursor-not-allowed'
+                              }`}
+                              title={!linkedHubId ? 'Device is not linked' : isDevActive ? 'Device active' : 'Device disabled'}
+                            >
+                              {isDevActive ? 'Active' : 'Inactive'}
+                            </button>
+                          </>
+                        )
+                      })()}
 
                       {/* Delete / Detach Device */}
                       <button
@@ -1262,20 +1335,36 @@ export default function RoomDetailPage({
               ) : (
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div
-                    onClick={() => toggleDevice('light')}
+                    onClick={() => {
+                      if (!linkedHubId) {
+                        triggerToast('Device is not linked')
+                        return
+                      }
+                      toggleDevice('light')
+                    }}
                     className="p-3 rounded-xl bg-[#F9F9F7] border border-[#E5E7EB] cursor-pointer"
                   >
                     <Lightbulb className="w-4 h-4 text-[#C9A227] mb-1" />
                     <div className="font-bold text-[#0B1F3A]">Master Light</div>
-                    <div className="text-[10px] text-emerald-600 font-semibold">Active</div>
+                    <div className={`text-[10px] font-semibold ${linkedHubId ? 'text-emerald-600' : 'text-slate-400'}`}>
+                      {linkedHubId ? 'Active' : 'Inactive'}
+                    </div>
                   </div>
                   <div
-                    onClick={() => toggleDevice('ac')}
+                    onClick={() => {
+                      if (!linkedHubId) {
+                        triggerToast('Device is not linked')
+                        return
+                      }
+                      toggleDevice('ac')
+                    }}
                     className="p-3 rounded-xl bg-[#F9F9F7] border border-[#E5E7EB] cursor-pointer"
                   >
                     <Snowflake className="w-4 h-4 text-[#2563EB] mb-1" />
                     <div className="font-bold text-[#0B1F3A]">Climate AC</div>
-                    <div className="text-[10px] text-emerald-600 font-semibold">Active</div>
+                    <div className={`text-[10px] font-semibold ${linkedHubId ? 'text-emerald-600' : 'text-slate-400'}`}>
+                      {linkedHubId ? 'Active' : 'Inactive'}
+                    </div>
                   </div>
                 </div>
               )}
