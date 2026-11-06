@@ -175,9 +175,23 @@ export default function App() {
       showToast(`${targetRoom.number} ${deviceKey.toUpperCase()} turned ${newState ? 'ON' : 'OFF'}`)
       const roomNum = String(targetRoom.number).replace(/Room\s*/i, '').trim()
       // 2. Dispatch hardware relay command to backend & ESP32
-      deviceService.toggleActuator(roomNum, deviceKey, newState).catch((err) => {
-        console.warn('Hardware toggle notice:', err.message)
-      })
+      deviceService.toggleActuator(roomNum, deviceKey, newState)
+        .then((res) => {
+          if (res?.data && res.data.ok === false) {
+            showToast(res.data.error || 'Hardware unreachable')
+            setRooms((prev) =>
+              prev.map((r) =>
+                r.id === roomId
+                  ? { ...r, devices: { ...currentDevices, [deviceKey]: !newState } }
+                  : r
+              )
+            )
+          }
+        })
+        .catch((err) => {
+          console.warn('Hardware toggle notice:', err.message)
+          showToast(`Toggle notice: ${err.message}`)
+        })
     }
   }
 
