@@ -166,8 +166,13 @@ export default function RoomDetailPage({
     currentRoom.hubDeviceId ||
     currentRoom.devices?.find((d) => d.capabilities?.hubDeviceId)?.capabilities?.hubDeviceId ||
     null
+  const isLinked = Boolean(
+    linkedHubId ||
+    currentRoom.isLinked ||
+    currentRoom.devices?.some((d) => d.capabilities?.hubDeviceId)
+  )
   const isHubOnline = Boolean(
-    linkedHubId &&
+    isLinked &&
     (currentRoom.isOnline ?? currentRoom.hubOnline ?? currentRoom.devices?.some((d) => d.online))
   )
 
