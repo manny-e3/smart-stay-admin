@@ -46,6 +46,7 @@ import RoomModal from './RoomModal'
 import DeleteRoomModal from './DeleteRoomModal'
 import roomsService from '../services/roomsService'
 import requestsService from '../services/requestsService'
+import deviceService from '../services/deviceService'
 import { resolvePhotoUrl } from '../utils/photoUrl'
 
 export default function RoomDetailPage({
@@ -1102,7 +1103,8 @@ export default function RoomDetailPage({
                             if (onUpdateRoom) onUpdateRoom(refreshed)
                           }
                         } catch (e) {
-                          triggerToast('Unlink error')
+                          console.error('Unlink error:', e)
+                          triggerToast(e?.message || 'Unlink error')
                         }
                       }
                     }}
@@ -1156,7 +1158,8 @@ export default function RoomDetailPage({
                         if (onUpdateRoom) onUpdateRoom(refreshed)
                       }
                     } catch (err) {
-                      triggerToast('Failed to save Controller Device ID')
+                      console.error('Failed to save Controller Device ID:', err)
+                      triggerToast(err?.message || 'Failed to save Controller Device ID')
                     } finally {
                       setSavingHub(false)
                     }
