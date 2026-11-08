@@ -11,23 +11,23 @@ export default defineConfig({
   server: {
     proxy: {
       '/staff': {
-        target: 'https://dev.rekovryltd.com',
+        target: 'https://smart-stay-api.onrender.com',
         changeOrigin: true,
       },
       '/admin': {
-        target: 'https://dev.rekovryltd.com',
+        target: 'https://smart-stay-api.onrender.com',
         changeOrigin: true,
       },
       '/health': {
-        target: 'https://dev.rekovryltd.com',
+        target: 'https://smart-stay-api.onrender.com',
         changeOrigin: true,
       },
       '/integrations': {
-        target: 'https://dev.rekovryltd.com',
+        target: 'https://smart-stay-api.onrender.com',
         changeOrigin: true,
       },
       '/socket.io': {
-        target: 'https://dev.rekovryltd.com',
+        target: 'https://smart-stay-api.onrender.com',
         ws: true,
       },
     },
