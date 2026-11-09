@@ -125,10 +125,12 @@ export default function RoomDetailPage({
           }
 
           // Initialize actuator states
-          const lightDev = data.devices?.find((d) => d.type === 'light')
-          const acDev = data.devices?.find((d) => d.type === 'thermostat')
-          const tvDev = data.devices?.find((d) => d.type === 'tv')
-          const fridgeDev = data.devices?.find((d) => d.externalId?.includes('fridge') || d.name?.toLowerCase().includes('fridge'))
+          // Prefer the exact ESP32 relay devices (light-106, ac-106, ...) over older duplicates.
+          const relay = (key) => data.devices?.find((d) => d.externalId === `${key}-${data.number}`)
+          const lightDev = relay('light') || data.devices?.find((d) => d.type === 'light')
+          const acDev = relay('ac') || data.devices?.find((d) => d.type === 'thermostat')
+          const tvDev = relay('tv') || data.devices?.find((d) => d.type === 'tv')
+          const fridgeDev = relay('fridge') || data.devices?.find((d) => d.externalId?.includes('fridge') || d.name?.toLowerCase().includes('fridge'))
 
           const isDetailOnline = Boolean(data.isOnline ?? data.hubOnline)
           setDevices({

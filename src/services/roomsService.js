@@ -1,12 +1,33 @@
 import { api } from './apiClient'
 
+// Several screens (App, Rooms grid, dashboard...) load the board at the same moment, e.g. on every
+// `board:refresh` socket event. Calls with the same filters share one HTTP request; calls made while
+// a request is already running share ONE follow-up request, so they still get fresh data.
+const boardInflight = new Map() // filtersKey -> { promise, next }
+
+function loadBoard(filters) {
+  const key = JSON.stringify(filters || {})
+  const current = boardInflight.get(key)
+  if (current) {
+    if (!current.next) {
+      current.next = current.promise.catch(() => {}).then(() => loadBoard(filters))
+    }
+    return current.next
+  }
+  const promise = api.get('/admin/rooms/board', filters).finally(() => {
+    if (boardInflight.get(key)?.promise === promise) boardInflight.delete(key)
+  })
+  boardInflight.set(key, { promise, next: null })
+  return promise
+}
+
 export const roomsService = {
   /**
    * Fetch room board with optional filters
    * @param {Object} filters { floor: '1,2', status: 'alert,request,dnd,occupied,vacant', roomType: 'Suite' }
    */
   async getRoomBoard(filters = {}) {
-    return await api.get('/admin/rooms/board', filters)
+    return await loadBoard(filters)
   },
 
   /**
