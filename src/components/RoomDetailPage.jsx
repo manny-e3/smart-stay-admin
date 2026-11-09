@@ -668,13 +668,14 @@ export default function RoomDetailPage({
                     <span className="text-xs font-bold text-[#0B1F3A] truncate">Indoor Air Quality</span>
                   </div>
                   <span className={`text-xs font-bold px-2 py-0.5 rounded-full shrink-0 ${
-                    !linkedHubId
+                    !linkedHubId || !isHubOnline || !currentRoom.iaq
                       ? 'bg-slate-100 text-slate-500 border border-slate-200'
                       : String(currentRoom.iaq || '').toLowerCase().includes('poor')
                       ? 'bg-[#FEE2E2] text-[#DC2626]'
                       : 'bg-[#DCFCE7] text-[#15803D]'
                   }`}>
-                    {linkedHubId ? (currentRoom.iaq || 'EXCELLENT') : 'OFFLINE'}
+                    {/* Only show a rating the sensor actually reported; never a made-up default. */}
+                    {!linkedHubId ? 'OFFLINE' : isHubOnline && currentRoom.iaq ? currentRoom.iaq : '--'}
                   </span>
                 </div>
 
