@@ -66,7 +66,8 @@ export default function IoTRoomCard({
       return
     }
     if (onToggleDevice) {
-      onToggleDevice(room.id, deviceKey)
+      // Send the state this tile should go to, based on what the card is showing.
+      onToggleDevice(room.id, deviceKey, !deviceState[deviceKey])
     }
   }
 

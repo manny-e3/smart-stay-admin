@@ -60,6 +60,7 @@ export default function RoomDetailPage({
   const { roomId } = useParams()
 
   const [loading, setLoading] = useState(true)
+  const [detailReload, setDetailReload] = useState(0) // bump to re-read the room from the API
   const [roomDetail, setRoomDetail] = useState(null)
   const [toastMessage, setToastMessage] = useState(null)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
@@ -147,7 +148,7 @@ export default function RoomDetailPage({
       }
     }
     loadDetail()
-  }, [roomId, propRoom])
+  }, [roomId, propRoom, detailReload])
 
   const handleBack = () => {
     if (onBack) onBack()
@@ -218,14 +219,16 @@ export default function RoomDetailPage({
       triggerToast('Device is offline (Hardware not transmitting)')
       return
     }
-    setDevices((prev) => {
-      const updated = { ...prev, [key]: !prev[key] }
-      triggerToast(`${key.toUpperCase()} turned ${updated[key] ? 'ON' : 'OFF'}`)
-      if (onToggleDevice && currentRoom.id) {
-        onToggleDevice(currentRoom.id, key)
-      }
-      return updated
-    })
+    // Decide the new state from what this page shows, and send it outside the state updater:
+    // React may run updaters twice (StrictMode), which sent every command twice.
+    const next = !devices[key]
+    setDevices((prev) => ({ ...prev, [key]: next }))
+    triggerToast(`${key.toUpperCase()} turned ${next ? 'ON' : 'OFF'}`)
+    if (onToggleDevice && currentRoom.id) {
+      onToggleDevice(currentRoom.id, key, next)
+    }
+    // After the API's 10 s settle window, reload so the tiles show what the hub actually did.
+    setTimeout(() => setDetailReload((n) => n + 1), 12000)
   }
 
   const toggleDoorLock = () => {
