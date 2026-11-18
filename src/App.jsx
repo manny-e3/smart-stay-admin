@@ -126,10 +126,7 @@ export default function App() {
   }, [isAuthenticated])
 
   // Toggle smart device on room card or detail view
-  // desiredState: the state the tile the user clicked should go to. Callers pass it because the
-  // room detail page keeps its own copy of the relay states, which can differ from `rooms`.
-  // Working it out here from `rooms` sent ON when the user had just switched a tile OFF.
-  const handleToggleDevice = (roomId, deviceKey, desiredState) => {
+  const handleToggleDevice = (roomId, deviceKey) => {
     const targetRoom = rooms.find((r) => r.id === roomId)
     const isLinked = Boolean(
       targetRoom?.hubDeviceId &&
@@ -153,7 +150,7 @@ export default function App() {
       targetRoom?.devices && typeof targetRoom.devices === 'object' && !Array.isArray(targetRoom.devices)
         ? targetRoom.devices
         : { light: true, fridge: true, ac: true, tv: false }
-    const newState = typeof desiredState === 'boolean' ? desiredState : !currentDevices[deviceKey]
+    const newState = !currentDevices[deviceKey]
 
     // 1. Optimistic UI update
     setRooms((prev) =>
