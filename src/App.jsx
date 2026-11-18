@@ -76,10 +76,10 @@ export default function App() {
   }
 
   // Fetch real rooms board from backend
-  const fetchRooms = async () => {
+  const fetchRooms = async ({ silent = false } = {}) => {
     if (!isAuthenticated) return
     try {
-      setLoadingRooms(true)
+      if (!silent) setLoadingRooms(true)
       const data = await roomsService.getRoomBoard()
       if (data?.floors && Array.isArray(data.floors)) {
         const flat = []
@@ -162,9 +162,6 @@ export default function App() {
               ...currentDevices,
               [deviceKey]: newState,
             },
-            energy24h: Number(
-              ((r.energy24h || 12.0) + (newState ? 0.3 : -0.2)).toFixed(1)
-            ),
           }
         }
         return r
@@ -175,22 +172,31 @@ export default function App() {
       showToast(`${targetRoom.number} ${deviceKey.toUpperCase()} turned ${newState ? 'ON' : 'OFF'}`)
       const roomNum = String(targetRoom.number).replace(/Room\s*/i, '').trim()
       // 2. Dispatch hardware relay command to backend & ESP32
+      const rollback = () =>
+        setRooms((prev) =>
+          prev.map((r) =>
+            r.id === roomId
+              ? { ...r, devices: { ...(r.devices || currentDevices), [deviceKey]: !newState } }
+              : r
+          )
+        )
       deviceService.toggleActuator(roomNum, deviceKey, newState)
         .then((res) => {
-          if (res?.data && res.data.ok === false) {
-            showToast(res.data.error || 'Hardware unreachable')
-            setRooms((prev) =>
-              prev.map((r) =>
-                r.id === roomId
-                  ? { ...r, devices: { ...currentDevices, [deviceKey]: !newState } }
-                  : r
-              )
-            )
+          // request() already unwraps the response, so `res` is { ok, queued, ... }
+          if (res && res.ok === false) {
+            showToast(res.error || 'Hardware unreachable')
+            rollback()
+            return
           }
+          // The API ignores the hub's relay reports for 10 s after a command, then trusts the hub.
+          // Re-read the board after that so this screen shows what the relay really did,
+          // even if live updates aren't reaching it.
+          setTimeout(() => fetchRooms({ silent: true }), 12000)
         })
         .catch((err) => {
           console.warn('Hardware toggle notice:', err.message)
-          showToast(`Toggle notice: ${err.message}`)
+          showToast(`Toggle failed: ${err.message}`)
+          rollback()
         })
     }
   }

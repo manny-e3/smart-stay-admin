@@ -1,9 +1,5 @@
 import { io } from 'socket.io-client'
-import { getAccessToken } from './apiClient'
-
-const API_BASE_URL =
-  (typeof import.meta !== 'undefined' && import.meta?.env?.VITE_API_URL) ||
-  'http://localhost:5000'
+import { getAccessToken, API_BASE_URL } from './apiClient'
 
 let socket = null
 const listeners = new Map()
